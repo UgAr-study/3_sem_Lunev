@@ -1,168 +1,106 @@
-#include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/ipc.h>
-#include <sys/msg.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/prctl.h>
-#include <errno.h>
-#include <signal.h>
-
-enum { N = 10 };
-
-int MsgQContainer (int id) {
-    static int msgid;
-    if (id != 0) {
-        msgid = id;
-    }
-    return msgid;
-}
-
-void handler (int sig) {
-    if (sig == 0) {
-        printf ("My parent died, so I'm too\n");
-        kill(getpid(), SIGKILL);
-        return;
-    }
-    if (msgctl(MsgQContainer(0), IPC_RMID, NULL) < 0 && errno != EINVAL) {
-        printf ("Can't remove queue in handler");
-        exit(EXIT_FAILURE);
-    }
-    printf ("Undefined sidnal [%d]", sig);
-}
-
-struct msgbuf {
-    long mtype;
-    unsigned number;
-};
+#include "message_header.h"
 
 int main(int argc, char* argv[]) {
 
-    int num;
+    long num;
     int msgid;
 
     if (argc == 1) {
         num = N;
     } else {
         char *endptr;
-        num = strtol (argv[1], &endptr, 10);
+        num = strtol(argv[1], &endptr, 10);
         if (*endptr != '\0') {
-            printf ("bad arg\n");
-            exit (EXIT_FAILURE);
+            printf("bad arg\n");
+            exit(EXIT_FAILURE);
         }
     }
 
-    printf ("parent pid is %d\n", getpid());
+    printf("parent pid is %d\n", getpid());
 
-    pid_t *table_chpids = (pid_t*) calloc (num, sizeof(pid_t));
+    struct pid_table child_pids;
+    child_pids.table = (pid_t *) calloc(num, sizeof(pid_t));
+    child_pids.size = num;
 
     if ((msgid = msgget(IPC_PRIVATE, 0666 | IPC_CREAT)) < 0) {
-        printf ("Can't create msg\n");
-        exit (EXIT_FAILURE);
-    }
-
-    if (MsgQContainer(msgid) != msgid) {
-        printf ("Container does wrong\n");
-        if (msgctl(msgid, IPC_RMID, NULL) < 0) {
-            printf("Can't remove the msg queue\n");
-            perror("parent msgctl()");
-        }
+        printf("Can't create msg\n");
         exit(EXIT_FAILURE);
     }
 
-    for (unsigned i = 0; i < num; ++i) {
 
-        pid_t ppid_bef_fork = getpid();
+    pid_t ppid_bef_fork = getpid();
+    for (unsigned i = 0; i < num; ++i) {
         pid_t pid = fork();
 
-        table_chpids[i] = pid;
-
         if (pid < 0) {
-            printf ("Can't do fork on %u iteration\n", i);
-            for (int j = 0; j < i; ++j)
-                kill(table_chpids[j], SIGKILL);
-
-            if (msgctl(msgid, IPC_RMID, NULL) < 0) {
-                printf("Can't remove the msg queue\n");
-                perror("parent msgctl()");
-            }
-
+            printf ("parent couldn't do fork...\n");
+            DeleteMSQ(msgid);
             exit(EXIT_FAILURE);
         }
 
-        if (pid == 0) {
+        if (pid == 0) { //We are in the child
 
-            if (prctl(PR_SET_PDEATHSIG, SIGUSR1) < 0) {
+            if (SetParentDeath(msgid, ppid_bef_fork) < 0) {
                 printf ("Can't do prctl\n");
-
-                if (msgctl(msgid, IPC_RMID, NULL) < 0) {
-                    if (errno == EIDRM)
-                        printf ("\n[%d]: queue is already removed\n", getpid());
-                    if (errno == EINVAL)
-                        printf ("\n[%d]: Invalid arg\n", getpid());
-
-                    printf("[%d]: Can't remove the msg queue\n", getpid());
-                    //perror ("child after prctl msgtl()");
-                }
-
-                exit(EXIT_FAILURE);
-            }
-
-            signal(SIGUSR1, handler);
-
-            if (getppid() != ppid_bef_fork) {
-                printf ("My parent has been changed\n");
-                printf ("My new parent pid is [%d]\nI'm finish", getppid());
-                if (msgctl(msgid, IPC_RMID, NULL) < 0 && errno != EINVAL) {
-                    printf("[%d]: Can't remove the msg queue\n", getpid());
-                    perror ("child after comparing the ppid msgctl()");
-                }
-
                 kill(getpid(), SIGKILL);
             }
 
-            struct msgbuf rcvbuf;
-            if (msgrcv(msgid, (struct msgbuf*) &rcvbuf, sizeof(unsigned), (long) getpid(), 0) < 0) {
-                printf ("Can't receive\n");
-
-                if (msgctl(msgid, IPC_RMID, NULL) < 0 && errno != EINVAL) {
-                    printf("[%d]: Can't remove the msg queue\n", getpid());
-                    perror ("child after comparing the ppid msgctl()");
-                }
-
+            pid_t mypid = getpid();
+            if (SendPermission(msgid, 1, mypid) < 0) {
+                //sending to parent went wrong
                 exit(EXIT_FAILURE);
             }
-            printf ("%u\n", rcvbuf.number);
-            return 0;
-        }
 
-    }
+            long mynumber = GetMyNumber (msgid, mypid);
+            if (mynumber < 0) {
+                //parent didn't answer
+                exit(EXIT_FAILURE);
+            }
+            printf ("%ld\n", mynumber);
+            fflush(stdout);
 
-    printf ("\nMy childs are:\n");
-    for (int i = 0; i < num; ++i) {
-        printf ("%d) [%d]\n", i, table_chpids[i]);
-    }
-
-    for (int i = 0; i < num; ++i) {
-        struct msgbuf sndbuf;
-        sndbuf.mtype = table_chpids[i];
-        sndbuf.number = i;
-        int len = sizeof(unsigned);
-
-        if (msgsnd(msgid, (struct msgbuf*) &sndbuf, len, 0) < 0) {
-            printf ("Can't send\n");
-
-            if (msgctl(msgid, IPC_RMID, NULL) < 0 && errno != EIDRM) {
-                printf("[%d]: Can't remove the msg queue\n", getpid());
-                perror ("parent after send msgctl()");
+            if (SendPermission(msgid, mypid, 0) < 0) {
+                //sending confirmation to parent went wrong
+                exit(EXIT_FAILURE);
             }
 
+            exit(EXIT_SUCCESS);
+        }
+
+        //Wa are in the parent
+        child_pids.table[i] = pid;
+    }
+
+    //exit(0);
+
+    struct pid_table delayed_children;
+    delayed_children.table = (pid_t *) calloc(num, sizeof(pid_t));
+    delayed_children.size = num;
+
+    for (unsigned i = 0; i < num; ++i)
+        if (RecieveAndDelayPid (msgid, child_pids, &delayed_children) < 0) {
+            DeleteMSQ(msgid);
             exit(EXIT_FAILURE);
         }
 
-        waitpid (table_chpids[i], NULL, 0);
+    for (unsigned i = 0; i < num; ++i) {
+        pid_t pid = delayed_children.table[i];
+        if (pid != 0) {
+            if (SendPermission(msgid, pid, i) < 0) {
+                //permission hasn't sent
+                exit(EXIT_FAILURE);
+            }
+            if (GetConfirmation(msgid, pid) < 0) {
+                //child didn't answer
+                exit(EXIT_FAILURE);
+            }
+            continue;
+        }
+
+        //child is missed
+
+        DeleteMSQ(msgid);
+        exit(EXIT_FAILURE);
     }
 
     return 0;

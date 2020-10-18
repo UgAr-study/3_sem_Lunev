@@ -1,0 +1,3 @@
+#!/bin/bash
+
+gcc reader.c src.c -DREMOVEALL -o reader
