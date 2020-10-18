@@ -10,12 +10,12 @@
 int main() {
     int fd;
     const char* filepath = "/home/artem/ProgProjects/ClionProjects/Lunev/Seminars/train/fifo";
-    //mkfifo(filepath, 0666);
     if (mkfifo(filepath, 0666) < 0 && errno != EEXIST) {
         printf("Ooops! input.c\n");
         exit(EXIT_FAILURE);
     }
 
+    /*
     int fds[2];
     pipe(fds);
     close (fds[1]);
@@ -35,7 +35,8 @@ int main() {
     char pipe_contents[10];
     int bytes_read = read(fds[0], pipe_contents, 10);
     printf("Read from pipe returned %d\n", bytes_read);
-/*
+     */
+
     fd = open (filepath, O_RDONLY | O_NONBLOCK);
     printf ("input fd = %d\n", fd);
     fd_set r, w;
@@ -53,11 +54,11 @@ int main() {
     int bytes_read = read(fd, buf, 10);
     printf("Read returned %d\n", bytes_read);
 
-    //int sel_ret_valR = select(fd + 1, &r, NULL, NULL, NULL);
+    int sel_ret_valR = select(fd + 1, &r, NULL, NULL, &tv);
     //int sel_ret_valW = select(fd + 1, NULL, &w, NULL, &tv);
 
-    //printf ("selectR is %d\tr.bits = %ld\n", sel_ret_valR, r.fds_bits[0]);
+    printf ("selectR is %d\n", sel_ret_valR);
     //printf ("selectW is %d\tw.bits = %ld\n", sel_ret_valW, w.fds_bits[0]);
-    */
+
 }
 

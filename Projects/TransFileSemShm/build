@@ -1,0 +1,4 @@
+#!/bin/bash
+
+gcc writer.c src.c -o writer
+gcc reader.c src.c -o reader
