@@ -26,9 +26,9 @@ struct pid_table {
 
 
 int SetParentDeath (int msgid, pid_t ppid_bef_fork);
-int RecieveAndDelayPid(int msgid, struct pid_table child_pids, struct pid_table *delayed);
-long GetThisChildNumber(pid_t pid, struct pid_table child_pids);
-int SendPermission(int msgid, long type, unsigned number);
-int GetConfirmation(int msgid, pid_t pid);
+int RecieveAndDelayPid (int msgid, struct pid_table child_pids, struct pid_table *delayed);
+long GetThisChildNumber (pid_t pid, struct pid_table child_pids);
+int Send (int msgid, long type, unsigned number);
+int GetConfirmation (int msgid, pid_t pid);
 long GetMyNumber (int msgid, pid_t mypid);
 void DeleteMSQ (int msgid);

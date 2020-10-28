@@ -17,10 +17,12 @@ int main(int argc, char* argv[]) {
     }
 
     printf("parent pid is %d\n", getpid());
+/*
 
     struct pid_table child_pids;
     child_pids.table = (pid_t *) calloc(num, sizeof(pid_t));
     child_pids.size = num;
+*/
 
     if ((msgid = msgget(IPC_PRIVATE, 0666 | IPC_CREAT)) < 0) {
         printf("Can't create msg\n");
@@ -48,26 +50,27 @@ int main(int argc, char* argv[]) {
             }
 #endif
 
-            pid_t mypid = getpid();
-            if (Send (msgid, 1, i) < 0) {
+            //pid_t mypid = getpid();
+            /*if (Send (msgid, 1, i) < 0) {
                 exit (EXIT_FAILURE);
             }
-            /*
-            if (Send(msgid, 1, mypid) < 0) {
+            */
+            if (Send(msgid, 1, i) < 0) {
                 //sending to parent went wrong
+                exit(EXIT_FAILURE);
+            }
+
+            //long mynumber = GetMyNumber (msgid, mypid);
+            GetMyNumber(msgid, i);
+            /*if (mynumber < 0) {
+                //parent didn't answer
                 exit(EXIT_FAILURE);
             }*/
 
-            long mynumber = GetMyNumber (msgid, mypid);
-            if (mynumber < 0) {
-                //parent didn't answer
-                exit(EXIT_FAILURE);
-            }
-
-            printf ("%ld\n", mynumber);
+            printf ("%d\n", i);
             fflush(stdout);
 
-            if (Send(msgid, mypid, 0) < 0) {
+            if (Send(msgid, i, 0) < 0) {
                 //sending confirmation to parent went wrong
                 exit(EXIT_FAILURE);
             }
@@ -76,14 +79,16 @@ int main(int argc, char* argv[]) {
         }
 
         //Wa are in the parent
-        child_pids.table[i] = pid;
+        //child_pids.table[i] = pid;
     }
 
     //exit(0);
+/*
 
     struct pid_table delayed_children;
     delayed_children.table = (pid_t *) calloc(num, sizeof(pid_t));
     delayed_children.size = num;
+*/
 
     /*
     for (unsigned i = 0; i < num; ++i)
@@ -93,7 +98,10 @@ int main(int argc, char* argv[]) {
         }
     */
     for (unsigned i = 0; i < num; ++i) {
-        pid_t pid = delayed_children.table[i];
+        //pid_t pid = delayed_children.table[i];
+        Send (msgid, i, 0);
+        GetConfirmation(msgid, i);
+        /*
         if (pid > 0) {
             if (Send(msgid, pid, i) < 0) {
                 //permission hasn't sent
@@ -104,13 +112,15 @@ int main(int argc, char* argv[]) {
                 exit(EXIT_FAILURE);
             }
             continue;
-        }
+        }*/
 
         //child is missed
 
-        DeleteMSQ(msgid);
-        exit(EXIT_FAILURE);
+
+        //exit(EXIT_FAILURE);
     }
 
+    //DeleteMSQ(msgid);
     return 0;
 }
+

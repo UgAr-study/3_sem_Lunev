@@ -29,7 +29,7 @@ long GetThisChildNumber(pid_t pid, struct pid_table child_pids) {
     return -1;
 }
 
-int SendPermission(int msgid, long type, unsigned number) {
+int Send(int msgid, long type, unsigned number) {
     struct msgbuf sndbuf;
     sndbuf.mtype = type;
     sndbuf.number = number;
@@ -42,6 +42,8 @@ int SendPermission(int msgid, long type, unsigned number) {
     }
     return 0;
 }
+
+
 
 int GetConfirmation(int msgid, pid_t pid) {
     struct msgbuf rcvbuf;

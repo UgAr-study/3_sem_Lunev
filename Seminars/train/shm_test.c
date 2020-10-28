@@ -13,7 +13,12 @@ int main(int argc, char *argv[]) {
     key_t key = ftok("main.c", 0);
     int shmid = shmget(key, 10 * sizeof(char), 0666 | IPC_CREAT);
     char *shmbuf = (char *) shmat(shmid, NULL, 0);
+
+    printf ("Hello, my pid is [%d] and I attached\n", getpid());
+
     struct shmid_ds shm_info;
+
+    getchar();
 
     if (shmctl (shmid, IPC_STAT, &shm_info) < 0) {
         perror ("shmctl():");
@@ -21,6 +26,7 @@ int main(int argc, char *argv[]) {
     }
 
     printf ("number of attached processes is %ld\n", shm_info.shm_nattch);
+    printf ("the last attached / detached pid is [%d]\n", shm_info.shm_lpid);
 
     shmdt (shmbuf);
     if (shmctl (shmid, IPC_RMID, NULL) < 0) {
