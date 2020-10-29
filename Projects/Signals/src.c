@@ -1,5 +1,7 @@
 #include "header.h"
 
+
+
 void SetBitsEmpty (struct Bits* bit) {
     for (int i = 0; i < 8 * sizeof(char); ++i)
         bit->bits[i] = 0;

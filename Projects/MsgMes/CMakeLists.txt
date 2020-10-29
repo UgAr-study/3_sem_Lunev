@@ -3,4 +3,4 @@ project(MsgMes C)
 
 set(CMAKE_C_STANDARD 99)
 
-add_executable(MsgMes main.c messages.c message_header.h)
+add_executable(MsgMes main.c messages.c message_header.h msg_without_arr.c)

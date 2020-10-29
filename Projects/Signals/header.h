@@ -1,7 +1,7 @@
 #pragma once
 
 //#define _POSIX_C_SOURCE
-#include <stdio.h>
+#include<stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ipc.h>
@@ -11,6 +11,7 @@
 #include <sys/prctl.h>
 #include <errno.h>
 #include <signal.h>
+#include <string.h>
 
 struct Bits {
     short bits[8 * sizeof(char)];

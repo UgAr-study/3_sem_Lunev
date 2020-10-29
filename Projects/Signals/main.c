@@ -1,34 +1,14 @@
-//#define _POSIX_C_SOURCE
-#include <stdio.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <sys/ipc.h>
-#include <stdlib.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <sys/prctl.h>
-#include <errno.h>
-#include <signal.h>
-#include <string.h>
+//#include <bits/sigaction.h>
+#include "header.h"
 
-//int i = 0;
+//TODO SIGUSR1 = 0, SIGUSR2 = 1
 
-struct Bits {
-    short bits[8 * sizeof(char)];
-};
-
-struct Bits ToBits(char c);
-void PrintBit (struct Bits bits);
-char ToChar (struct Bits bit);
-int SetParentDeath (pid_t ppid_bef_fork);
-void SetBitsEmpty (struct Bits* bit);
+int count = 0;
+struct Bits bit_char;
 
 void child_handler (int signo);
 void parent_handler (int signo);
 void wait_child (int signo);
-
-int count = 0;
-struct Bits bit_char;
 
 int main () {
 
@@ -53,6 +33,8 @@ int main () {
         printf ("Child: my pid is %d\n", getpid());
 
         char TestText[] = "Hello";
+        char filepath[] = "../test.txt";
+        FILE *file = fopen (filepath, "r");
 
         ch_sa.sa_handler = child_handler;
         sigaction (SIGUSR1, &ch_sa, NULL);
@@ -62,14 +44,13 @@ int main () {
         sigdelset(&ch_mask, SIGUSR1);
         sigdelset(&ch_mask, SIGINT);
 
-        for (int j = 0; j < strlen(TestText); ++j) {
+        char ch;
+        int j = 0;
+        while ((ch = fgetc(file)) != EOF) {
             printf ("Child: j = %d\n", j);
             fflush(stdout);
 
-            if (j == 2)
-                kill(getpid(), SIGKILL);
-
-            struct Bits bit_ = ToBits(TestText[j]);
+            struct Bits bit_ = ToBits(ch);
 
             for (int r = 0; r < 8 * sizeof(char); ++r) {
 
@@ -79,6 +60,7 @@ int main () {
                     kill(getppid(), SIGUSR2);
                 sigsuspend(&ch_mask);
             }
+            ++j;
         }
 
         exit(EXIT_SUCCESS);
@@ -107,14 +89,13 @@ int main () {
             SetBitsEmpty(&bit_char);
             count = 0;
         }
-        //printf ("on %d time: i = %d\n",r, i);
-        //fflush(stdout);
         ++r;
         kill(pid, SIGUSR1);
     }
 
     return 0;
 }
+
 
 void child_handler (int signo) {
     if (signo == SIGUSR1) {
@@ -148,51 +129,3 @@ void wait_child (int signo) {
         exit(EXIT_SUCCESS);
     }
 }
-
-void SetBitsEmpty (struct Bits* bit) {
-    for (int i = 0; i < 8 * sizeof(char); ++i)
-        bit->bits[i] = 0;
-}
-
-struct Bits ToBits(char c) {
-    struct Bits res;
-    for (int i = 0; i < 8 * sizeof(char); ++i) {
-        if ((c & (1 << i)) != 0) {
-            res.bits[i] = 1;
-        } else
-            res.bits[i] = 0;
-    }
-    return res;
-}
-
-char ToChar (struct Bits bit) {
-    char c = 0;
-    for (int i = 0; i < 8 * sizeof(char); ++i)
-        c = c | (bit.bits[i] << i);
-    return c;
-}
-
-void PrintBit (struct Bits c) {
-    for (int i = 0; i < 8 * sizeof(char); ++i)
-        printf ("%d", c.bits[i]);
-    printf ("\n");
-}
-
-int SetParentDeath (pid_t ppid_bef_fork) {
-
-    if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0) {
-        printf ("Can't do prctl\n");
-        return -1;
-    }
-
-    if (getppid() != ppid_bef_fork) {
-        printf ("My parent has been changed\n");
-        printf ("My new parent pid is [%d]\nI'm finish", getppid());
-        return -1;
-    }
-
-    return 0;
-}
-
-
-
