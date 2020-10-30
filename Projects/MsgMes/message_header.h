@@ -19,16 +19,6 @@ struct msgbuf {
     unsigned number;
 };
 
-struct pid_table {
-    pid_t *table;
-    unsigned size;
-};
-
-
-int SetParentDeath (int msgid, pid_t ppid_bef_fork);
-int RecieveAndDelayPid (int msgid, struct pid_table child_pids, struct pid_table *delayed);
-long GetThisChildNumber (pid_t pid, struct pid_table child_pids);
 int Send (int msgid, long type, unsigned number);
-int GetConfirmation (int msgid, pid_t pid);
-long GetMyNumber (int msgid, pid_t mypid);
+int Receive(int msgid, long type);
 void DeleteMSQ (int msgid);
