@@ -9,30 +9,19 @@ int main(int argc, char *argv[]) {
 
     key_t key = ftok ("src.c", 0);
 
-    int semid = CreateAndInitSems(key);
+    int semid = semget (key, 5, 0666 | IPC_CREAT);
 
-#ifdef REMOVEALL
-    int shmad = shmget (key, PAGESIZE * sizeof(char), 0666 | IPC_CREAT);
-    char *shmbuff = (char*) shmat(shmad, NULL, 0);
-    semctl (semid, 0, IPC_RMID);
-    shmdt(shmbuff);
-    shmctl (shmad, IPC_RMID, NULL);
-    exit(0);
-#endif
-
+    printf ("Writer: before all initializations\n");
     GetAllSemsInfo(semid);
 
-    if (CheckShit(semid, EMPTY) <= 0) {
-        if (InitAllSems(semid) < 0) {
-            perror ("writer: InitAllSems():");
-            semctl (semid, 0 , IPC_RMID);
-        }
+    if (IsExist(semid, WEXIST, IPC_NOWAIT) == 1) {
+        IsExist(semid, WEXIST, 0);
     }
 
-    P (semid, WEXIST, SEM_UNDO);
-    W (semid, REXIST, 0);
+    WaitOppenent(semid, REXIST);
 
-    printf ("a P EX\n");
+    InitSemWith1(semid, EMPTY);
+    InitSemWith1(semid, MUTEX);
 
     int shmid = shmget (key, PAGESIZE * sizeof(char), 0666 | IPC_CREAT);
     char *shmbuf = (char*) shmat(shmid, NULL, 0);
@@ -40,43 +29,26 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < PAGESIZE; ++i)
         shmbuf[i] = '\0';
 
+    P (semid, FULL, IPC_NOWAIT);
 
     int read_ret_val, j = 1;
     while (1) {
 
+        printf ("Writer: before P(EMPTY)\n");
         GetAllSemsInfo(semid);
 
-        V (semid, WCRITSEC, SEM_UNDO);
-        if (W (semid, REXIST, IPC_NOWAIT) < 0) {
-            printf ("Writer: checking shit...\n");
-            if (W (semid, EMPTY, IPC_NOWAIT) == 0) {
-                printf ("I think reader died\n");
-                break;
-            }
+        if (IsAlive(semid, REXIST, EMPTY) != 1) {
+            printf ("Writer: Reader died\n");
+            shmdt (shmbuf);
+            //V (semid, MUTEX, SEM_UNDO);
+            //V (semid, EMPTY, 0);
+            break;
         }
 
-        P (semid, EMPTY, 0);
         P (semid, MUTEX, SEM_UNDO);
 
         for (int i = 0; i < PAGESIZE; ++i)
             shmbuf[i] = '\0';
-
-        if (j >= 2) {
-
-            struct shmid_ds shm_info;
-            if (shmctl (shmid, IPC_STAT, &shm_info) < 0) {
-                perror ("shmctl():");
-                exit(EXIT_FAILURE);
-            }
-            if (shm_info.shm_nattch == 1) {
-                printf ("Writer finish\n");
-                shmdt (shmbuf);
-                V (semid, MUTEX, SEM_UNDO);
-                V (semid, EMPTY, 0);
-                break;
-            }
-
-        }
 
         read_ret_val = read (fdfrom, shmbuf, PAGESIZE);
 
@@ -98,10 +70,8 @@ int main(int argc, char *argv[]) {
 
         V (semid, MUTEX, SEM_UNDO);
         V (semid, FULL, 0);
-        P (semid, WCRITSEC, SEM_UNDO);
-        W (semid, RCRITSEC, 0);
 
-//#ifdef BREAK
+#ifdef BREAK
         ++j;
         if (j == 2) {
             printf ("\nWating while you kill reader\n");
@@ -109,15 +79,12 @@ int main(int argc, char *argv[]) {
             sleep (10);
             printf ("I waked up\n");
         }
-// #endif
+#endif
     }
 
-
-    //P (semid, WCRITSEC);
-    shmctl (shmid, IPC_RMID, NULL);
-    V (semid, WEXIST, SEM_UNDO);
-
     //semctl (semid, 0 , IPC_RMID);
+    shmctl (shmid, IPC_RMID, NULL);
+    P (semid, WEXIST, SEM_UNDO);
 
     return 0;
 }
