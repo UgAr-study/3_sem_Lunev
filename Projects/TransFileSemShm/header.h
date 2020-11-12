@@ -12,7 +12,7 @@
 #include <dirent.h>
 
 
-enum {WEXIST = 0, REXIST = 1, FULL = 2, EMPTY = 3, MUTEX = 4, PAGESIZE = 10};
+enum { WEXIST = 0, REXIST = 1, PRINT = 2, MEMORY = 3, PAIR = 4, FINISH = 5, PAGESIZE = 10 };
 
 int P (int semid, int n, int flags);
 int V (int semid, int n, int flags);

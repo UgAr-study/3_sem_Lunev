@@ -117,12 +117,13 @@ void WaitOppenent (int semid, int num) {
 }
 
 void GetAllSemsInfo (int semid) {
-    printf ("\n\nSemaphore info:[\n");
-    printf ("semid is %d\n", semid);
+    printf ("\nSemaphore info:[\n");
+    printf ("semid  is %d\n", semid);
     printf ("WEXIST is %d\n", GetVal(semid, WEXIST));
     printf ("REXIST is %d\n", GetVal(semid, REXIST));
-    printf ("FULL is %d\n", GetVal(semid, FULL));
-    printf ("EMPTY is %d\n", GetVal(semid, EMPTY));
-    printf ("MUTEX is %d\n", GetVal(semid, MUTEX));
+    printf ("PRINT  is %d\n", GetVal(semid, PRINT));
+    printf ("MEMORY is %d\n", GetVal(semid, MEMORY));
+    printf ("PAIR   is %d\n", GetVal(semid, PAIR));
+    printf ("FINISH is %d\n", GetVal(semid, FINISH));
     printf ("]\n\n");
 }

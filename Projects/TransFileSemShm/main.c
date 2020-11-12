@@ -3,33 +3,9 @@
 enum { TEST = 0 };
 
 int main(int argc, char *argv[]) {
-    //const char *file = "test.txt";
     key_t key = ftok ("./header.h", 0);
-    //int shmid = shmget (key, sizeof(long), 0666 | IPC_CREAT);
-
-    /*int semid_test = 0;
-    if ((semid_test = semget (key, 1, IPC_CREAT | IPC_EXCL)) < 0) {
-        perror("1) semget: ");
-        if ((semid_test = semget (key, 1, IPC_CREAT)) < 0) {
-            perror("2) semget: ");
-            return 0;
-        }
-        if ((semctl (semid_test, 0 , IPC_RMID)) < 0) {
-            perror("delete: ");
-            return 0;
-        }
-        return 0;
-    }
-
-    if ((semctl (semid_test, 0 , IPC_RMID)) < 0) {
-        perror("delete: ");
-        return 0;
-    }
-
-    return 0;*/
 
     int semid = semget (key, 1, 0666 | IPC_CREAT); // all semaphores are 0
-    //char *shmbuf = (char*) shmat(shmid, NULL, 0);
 
     if (semid < 0) {
         perror("3) semget: ");
@@ -66,3 +42,14 @@ int main(int argc, char *argv[]) {
     semctl (semid, 0 , IPC_RMID);
     return 0;
 }
+
+    Reader:
+P (PRINT);
+print to stdout;
+V (WRITER);
+
+    Writer:
+P (WRITER);
+scanf from file;
+V (PRINT);
+
