@@ -2,16 +2,26 @@
 
 int main(int argc, char *argv[]) {
 
-    printf ("Writer pid is %d\n\n", getpid());
-    const char *file = "test.txt";
-    int fdfrom = open (file, O_RDONLY);
-    printf ("fd from is %d\n", fdfrom);
+    if (argc < 2) {
+        printf ("few arguments\n");
+        exit (EXIT_FAILURE);
+    }
+
+    //printf ("Writer pid is %d\n\n", getpid());
+    //const char *file = "test.txt";
+    int fdfrom = open (argv[1], O_RDONLY);
+    //printf ("fd from is %d\n", fdfrom);
+
+    if (fdfrom < 0) {
+        printf ("file is not opened\n");
+        exit(EXIT_FAILURE);
+    }
 
     key_t key = ftok ("src.c", 0);
 
     int semid = semget (key, 6, 0666 | IPC_CREAT);
 
-    printf ("semid = %d\n", semid);
+    //printf ("semid = %d\n", semid);
     //printf ("Writer: before all initializations\n");
     //GetAllSemsInfo(semid);
 
@@ -113,7 +123,7 @@ int main(int argc, char *argv[]) {
         int read_ret_val = read (fdfrom, shmbuf, PAGESIZE);
 
         if (read_ret_val == 0) {
-            printf ("Writer finish\n");
+    //        printf ("Writer finish\n");
 
             {
                 struct sembuf ops[2];
@@ -181,7 +191,7 @@ int main(int argc, char *argv[]) {
     semctl(semid, 0, IPC_RMID);
     close (fdfrom);
 
-    printf ("Writer: success!\n");
+    //printf ("Writer: success!\n");
     return 0;
 }
 

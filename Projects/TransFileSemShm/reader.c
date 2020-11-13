@@ -2,7 +2,7 @@
 
 int main(int argc, char *argv[]) {
 
-    printf ("Reader pid is %d\n\n", getpid());
+    //printf ("Reader pid is %d\n\n", getpid());
     key_t key = ftok ("src.c", 0);
 
     int semid = semget (key, 6, 0666 | IPC_CREAT);
@@ -88,8 +88,8 @@ int main(int argc, char *argv[]) {
 
 
             if (semop(semid, ops, 4) < 0) {
-                perror("semop in reader: ");
-                printf("Reader: writer died or finished\n");
+                //perror("semop in reader: ");
+                //printf("Reader: writer died or finished\n");
                 break;
             }
         }
@@ -143,7 +143,7 @@ int main(int argc, char *argv[]) {
 
     semctl(semid, 0, IPC_RMID);
 
-    printf ("Reader: success!\n");
+    //printf ("Reader: success!\n");
 
     return 0;
 }
