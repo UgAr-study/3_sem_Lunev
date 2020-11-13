@@ -11,7 +11,7 @@ int main(int argc, char *argv[]) {
     GetAllSemsInfo(semid);
 
     {
-        struct sembuf ops[3];
+        struct sembuf ops[2];
 
         ops[0].sem_num = REXIST;
         ops[0].sem_op = 0;
@@ -21,12 +21,23 @@ int main(int argc, char *argv[]) {
         ops[1].sem_op = 1;
         ops[1].sem_flg = SEM_UNDO;
 
-        ops[2].sem_num = PAIR;
-        ops[2].sem_op = 1;
-        ops[2].sem_flg = SEM_UNDO;
-
-        if (semop(semid, ops, 3) < 0) {
+        if (semop(semid, ops, 2) < 0) {
             perror("Checking REXIST: semop: ");
+            exit(EXIT_FAILURE);
+        }
+
+        semctl(semid, PRINT, SETVAL, 0);
+    }
+
+    {
+        struct sembuf op;
+
+        op.sem_num = PAIR;
+        op.sem_op = 1;
+        op.sem_flg = SEM_UNDO;
+
+        if (semop(semid, &op, 1) < 0) {
+            perror ("Reader: PAIR fail\n");
             exit(EXIT_FAILURE);
         }
     }

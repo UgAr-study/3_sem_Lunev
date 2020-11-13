@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
     //semctl(semid, 0, SETVAL, 2);
 
     {
-        struct sembuf ops[3];
+        struct sembuf ops[2];
 
         ops[0].sem_num = WEXIST;
         ops[0].sem_op = 0;
@@ -28,15 +28,13 @@ int main(int argc, char *argv[]) {
         ops[1].sem_op = 1;
         ops[1].sem_flg = SEM_UNDO;
 
-        ops[2].sem_num = PAIR;
-        ops[2].sem_op = 1;
-        ops[2].sem_flg = SEM_UNDO;
-
-        if (semop(semid, ops, 3) < 0) {
+        if (semop(semid, ops, 2) < 0) {
             perror("Checking WEXIST: semop: ");
             exit(EXIT_FAILURE);
         }
     }
+
+
 
     {
         struct sembuf ops[2];
@@ -55,6 +53,27 @@ int main(int argc, char *argv[]) {
         }
 
         semctl(semid, MEMORY, SETVAL, 1);
+    }
+
+    {
+        struct sembuf ops[3];
+
+        ops[0].sem_num = PAIR;
+        ops[0].sem_op = -1;
+        ops[0].sem_flg = 0;
+
+        ops[1].sem_num = PAIR;
+        ops[1].sem_op = 1;
+        ops[1].sem_flg = 0;
+
+        ops[2].sem_num = PAIR;
+        ops[2].sem_op = 1;
+        ops[2].sem_flg = SEM_UNDO;
+
+        if (semop (semid, ops, 3) < 0) {
+            perror ("Writer: PAIR fail\n");
+            exit(EXIT_FAILURE);
+        }
     }
 
     int shmid = shmget (key, PAGESIZE * sizeof(char), 0666 | IPC_CREAT);
