@@ -12,10 +12,8 @@ int main(int argc, char *argv[]) {
     int semid = semget (key, 6, 0666 | IPC_CREAT);
 
     printf ("semid = %d\n", semid);
-    printf ("Writer: before all initializations\n");
-    GetAllSemsInfo(semid);
-
-    //semctl(semid, 0, SETVAL, 2);
+    //printf ("Writer: before all initializations\n");
+    //GetAllSemsInfo(semid);
 
     {
         struct sembuf ops[2];
@@ -33,7 +31,6 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
     }
-
 
 
     {
@@ -54,6 +51,7 @@ int main(int argc, char *argv[]) {
 
         semctl(semid, MEMORY, SETVAL, 1);
     }
+
 
     {
         struct sembuf ops[3];
@@ -82,10 +80,11 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < PAGESIZE; ++i)
         shmbuf[i] = '\0';
 
+
     while (1) {
 
-        printf ("Writer in while\n");
-        GetAllSemsInfo(semid);
+        //printf ("Writer in while\n");
+        //GetAllSemsInfo(semid);
 
         {
             struct sembuf ops[3];
@@ -148,8 +147,8 @@ int main(int argc, char *argv[]) {
         V (semid, PRINT, 0);
     }
 
-    printf ("Writer: state after while\n");
-    GetAllSemsInfo(semid);
+    //printf ("Writer: state after while\n");
+    //GetAllSemsInfo(semid);
 
     {
         struct sembuf ops[2];
@@ -177,9 +176,9 @@ int main(int argc, char *argv[]) {
         semop(semid, &op, 1);
     }
 
-    GetAllSemsInfo(semid);
+    //GetAllSemsInfo(semid);
 
-    //semctl(semid, 0, IPC_RMID);
+    semctl(semid, 0, IPC_RMID);
     close (fdfrom);
 
     printf ("Writer: success!\n");

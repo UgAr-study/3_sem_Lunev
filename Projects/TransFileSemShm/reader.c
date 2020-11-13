@@ -7,8 +7,8 @@ int main(int argc, char *argv[]) {
 
     int semid = semget (key, 6, 0666 | IPC_CREAT);
 
-    printf ("Reader: before all initializations\n");
-    GetAllSemsInfo(semid);
+    //printf ("Reader: before all initializations\n");
+    //GetAllSemsInfo(semid);
 
     {
         struct sembuf ops[2];
@@ -64,8 +64,8 @@ int main(int argc, char *argv[]) {
 
     while (1) {
 
-        printf ("Reader in while\n");
-        GetAllSemsInfo(semid);
+        //printf ("Reader in while\n");
+        //GetAllSemsInfo(semid);
 
         {
             struct sembuf ops[4];
@@ -94,9 +94,9 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        printf (">>>> \n");
+        //printf (">>>> \n");
         int write_ret_val = write (STDOUT_FILENO, shmbuf, PAGESIZE);
-        printf ("<<<<\n");
+        //printf ("<<<<\n");
 
         if (write_ret_val < 0) {
             perror("write from shm ():");
@@ -110,8 +110,8 @@ int main(int argc, char *argv[]) {
     }
 
 
-    printf ("Reader: state after while\n");
-    GetAllSemsInfo(semid);
+    //printf ("Reader: state after while\n");
+    //GetAllSemsInfo(semid);
 
     {
         struct sembuf ops[2];
@@ -139,9 +139,9 @@ int main(int argc, char *argv[]) {
         semop(semid, &op, 1);
     }
 
-    GetAllSemsInfo(semid);
+    //GetAllSemsInfo(semid);
 
-    //semctl(semid, 0, IPC_RMID);
+    semctl(semid, 0, IPC_RMID);
 
     printf ("Reader: success!\n");
 
