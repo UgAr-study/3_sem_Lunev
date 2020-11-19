@@ -2,7 +2,12 @@
 
 int child_deaths = 0;
 
-int main() {
+int main(int argc, char *argv[]) {
+
+    if (argc == 1) {
+        printf ("too few arguments\n");
+        exit(EXIT_FAILURE);
+    }
 
     struct sigaction sa;
     sa.sa_flags = 0;
@@ -13,7 +18,7 @@ int main() {
         exit(EXIT_FAILURE);
     }
 
-    printf ("Parent pid is %d\n", getpid());
+    //printf ("Parent pid is %d\n", getpid());
 
     struct Channel *channels = (struct Channel*) calloc (N, sizeof (struct Channel));
 
@@ -25,12 +30,12 @@ int main() {
         pipe(fds_to);
         pipe(fds_from);
 
-        printf ("\n\n>>>>Pipe[%d]::fds_to[0]   = %d\n"
+        /*printf ("\n\n>>>>Pipe[%d]::fds_to[0]   = %d\n"
                 ">>>>Pipe[%d]::fds_to[1]   = %d\n"
                 ">>>>Pipe[%d]::fds_from[0] = %d\n"
                 ">>>>Pipe[%d]::fds_from[1] = %d\n\n\n",
                 i, fds_to[0], i, fds_to[1], i, fds_from[0], i, fds_from[1]);
-
+*/
         pid_t ppid_before_fork = getpid();
         pid_t pid = fork();
 
@@ -62,11 +67,12 @@ int main() {
                 close(fds_to[1]);
                 close(fds_from[0]);
 
-                char *filepath = "test.txt";
+                //char *filepath = "test.txt";
+                char *filepath = argv[1];
                 fd_from = open (filepath, O_RDONLY);
 
-                printf ("\nfile descriptor is %d\n", fd_from);
-                fflush(stdout);
+                //printf ("\nfile descriptor is %d\n", fd_from);
+                //fflush(stdout);
 
                 if (fd_from <= 0) {
                     printf ("Can't open a file\n");
@@ -85,21 +91,21 @@ int main() {
 
             while(1) {
 
-                printf ("\nChild[%d]: splice from %d to %d\n\n", i, fd_from, fd_to);
-                fflush(stdout);
+                //printf ("\nChild[%d]: splice from %d to %d\n\n", i, fd_from, fd_to);
+                //fflush(stdout);
 
                 int spl_ret_val;
                 if ((spl_ret_val = splice(fd_from, NULL, fd_to, NULL, PAGE, SPLICE_F_MOVE)) == 0) {
                     close (fd_to);
                     close (fd_from);
 
-                    printf ("child №%d finished\n", i);
-                    fflush(stdout);
+                    //printf ("child №%d finished\n", i);
+                    //fflush(stdout);
                     exit(EXIT_SUCCESS);
                 }
 
                 if (spl_ret_val < 0) {
-                    printf ("child[%d]: splice\n", i);
+                    printf ("child[%d]: splice failed\n", i);
                     fflush(stdout);
                     exit(EXIT_FAILURE);
                 }
@@ -131,7 +137,7 @@ int main() {
                 channels[i].fd_from = fds_from[0];
             }
 
-            printf ("pid[%d] = %d\n", i, pid);
+            //printf ("pid[%d] = %d\n", i, pid);
         }
     }
 
@@ -181,8 +187,8 @@ int main() {
            int closed_read_fds = 0;
            for (int i = 0; i < N; ++i) {
 
-               printf ("poll_read_fds[%i].revents = %d\n", i, poll_read_fds[i].revents);
-               fflush(stdout);
+               //printf ("poll_read_fds[%i].revents = %d\n", i, poll_read_fds[i].revents);
+               //fflush(stdout);
 
                if (poll_read_fds[i].revents & POLLNVAL) {
                    closed_read_fds++;
@@ -193,39 +199,14 @@ int main() {
                    //read from pipe to buffer (check if buffer is available: empty != 0 or offset != 0)
                    // don't forget to update empty
 
-                   printf("Parent: read from channels[%d]\n", i);
+                   //printf("Parent: read from channels[%d]\n", i);
 
                    if (channels[i].empty != 0) {
 
-                       int read_ret_val = 0;
+                       PutInBuffer(channels, i);
 
-                       if (channels[i].offset_for_write - channels[i].buffer <= channels[i].size - channels[i].empty) {
-                           read_ret_val = read(channels[i].fd_from, channels[i].offset_for_write, channels[i].empty);
-
-                       } else {
-                           size_t n = (size_t) (channels[i].buffer + channels[i].size - channels[i].offset_for_write);
-                           read_ret_val = read(channels[i].fd_from, channels[i].offset_for_write, n);
-                       }
-
-                       if (read_ret_val < 0) {
-                           perror("Parent: read: ");
-                           free_all(channels, N);
-                           exit(EXIT_FAILURE);
-                       }
-
-                       channels[i].empty -= read_ret_val;
-                       channels[i].offset_for_write += read_ret_val;
-                       channels[i].full += read_ret_val;
-
-                       assert (channels[i].empty + channels[i].full == channels[i].size);
-
-                       if (channels[i].offset_for_write - channels[i].buffer == channels[i].size) {
-                           //we wrote up to end;
-                           channels[i].offset_for_write = channels[i].buffer;
-                       }
-
-                       printf("buffer[%d] is after reading:\"%s\"\n", i, channels[i].buffer);
-                       fflush(stdout);
+                       //printf("buffer[%d] is after reading:\"%s\"\n", i, channels[i].buffer);
+                       //fflush(stdout);
                    }
                }
 
@@ -236,6 +217,8 @@ int main() {
 
            if (closed_read_fds == N) {
                //check the last buffer?
+               while (channels[N - 1].full)
+                   GetFromBuffer(channels, N - 1);
                break;
            }
 
@@ -247,8 +230,8 @@ int main() {
 
             for (int i = 0; i < N; ++i) {
 
-                printf ("poll_write_fds[%i].revents = %d\n", i, poll_write_fds[i].revents);
-                fflush(stdout);
+                //printf ("poll_write_fds[%i].revents = %d\n", i, poll_write_fds[i].revents);
+                //fflush(stdout);
 
                 if (poll_write_fds[i].revents & POLLERR) {
                     close (channels[i].fd_to);
@@ -261,47 +244,22 @@ int main() {
                     // don't forget to update offset (by write() returned value)
                     // if offset == size -> offset = 0
 
-                    printf ("\n%d children died; biffer state is %zu\n\n", child_deaths, channels[i].full);
-                    fflush(stdout);
+                    //printf ("\n%d children died; biffer state is %zu\n\n", child_deaths, channels[i].full);
+                    //fflush(stdout);
 
                     if (child_deaths == i + 1 && channels[i].full == 0) {
                         if (i != N - 1) {
                             close(channels[i].fd_to);
-                            printf("channels[%d].fd_to closed\n", i);
-                            fflush(stdout);
+                            //printf("channels[%d].fd_to closed\n", i);
+                            //fflush(stdout);
                         }
                     }
 
                     if (channels[i].full != 0) {
 
-                        printf("buffer[%d] before writing is :\"%s\"\n", i, channels[i].buffer);
-                        fflush(stdout);
-
-                        int write_ret_val = 0;
-
-                        if (channels[i].offset_for_read - channels[i].buffer <= channels[i].size - channels[i].full) {
-                            write_ret_val = write(channels[i].fd_to, channels[i].offset_for_read, channels[i].full);
-                        } else {
-                            size_t n = (size_t) (channels[i].buffer + channels[i].size - channels[i].offset_for_read);
-                            write_ret_val = write(channels[i].fd_to, channels[i].offset_for_read, n);
-                        }
-
-                        if (write_ret_val < 0) {
-                            perror("Parent: write: ");
-                            free_all(channels, N);
-                            exit(EXIT_FAILURE);
-                        }
-
-                        channels[i].full -= write_ret_val;
-                        channels[i].offset_for_read += write_ret_val;
-                        channels[i].empty += write_ret_val;
-
-                        assert (channels[i].empty + channels[i].full == channels[i].size);
-
-                        if (channels[i].offset_for_read - channels[i].buffer == channels[i].size) {
-                            //we read up to end;
-                            channels[i].offset_for_read = channels[i].buffer;
-                        }
+                        //printf("buffer[%d] before writing is :\"%s\"\n", i, channels[i].buffer);
+                        //fflush(stdout);
+                        GetFromBuffer(channels, i);
                     }
                 }
             }
@@ -321,7 +279,7 @@ void child_handler(int s) {
                 printf ("One of the children was killed\n");
                 exit(EXIT_FAILURE);
             }
-            printf("One of the children successfully finished\n");
+            //printf("One of the children successfully finished\n");
             child_deaths++;
         }
     }

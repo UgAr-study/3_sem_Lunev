@@ -22,7 +22,7 @@ void child_handler1(int s) {
             ch_deaths1++;
             //if (ch_alive == 0) stop = 0;
 
-            printf("One of the children successfully finished\n");
+            //printf("One of the children successfully finished\n");
             fflush(stdout);
         }
     }

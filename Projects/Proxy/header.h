@@ -35,3 +35,5 @@ struct Channel {
 void free_all(struct Channel *channels, size_t size);
 int SetParentDeath (pid_t ppid_bef_fork);
 void child_handler(int s);
+void GetFromBuffer (struct Channel *channels, int i);
+void PutInBuffer (struct Channel *channels, int i);
