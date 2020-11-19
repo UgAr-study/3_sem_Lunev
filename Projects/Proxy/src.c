@@ -9,19 +9,7 @@ void free_all(struct Channel *channels, size_t size) {
     }
 }
 
-void child_handler(int s) {
-    if (s == SIGCHLD) {
-        int state = 0;
-        wait(&state);
-        if (WIFEXITED(state)) {
-            if (WEXITSTATUS(state) != EXIT_SUCCESS) {
-                printf ("One of the children was killed\n");
-                exit(EXIT_FAILURE);
-            }
-            printf("One of the children successfully finished\n");
-        }
-    }
-}
+
 
 int SetParentDeath (pid_t ppid_bef_fork) {
 

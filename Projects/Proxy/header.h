@@ -17,7 +17,7 @@
 #include <assert.h>
 
 enum { N = 3, PAGE = 10 };
-extern int end;
+//static int child_deaths = 0;
 
 struct Channel {
     int fd_from, fd_to;
