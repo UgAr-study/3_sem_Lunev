@@ -16,7 +16,7 @@
 #include <poll.h>
 #include <assert.h>
 
-enum { N = 3, PAGE = 10 };
+enum { N = 10, PAGE = 10000 };
 //static int child_deaths = 0;
 
 struct Channel {
