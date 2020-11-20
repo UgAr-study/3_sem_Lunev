@@ -186,7 +186,7 @@ int main(int argc, char *argv[]) {
 
     while (1) {
 
-        int ready_to_read = poll (poll_read_fds, N, 0);
+        int ready_to_read = poll (poll_read_fds, N, -1);
 
         if (ready_to_read > 0) {
 
@@ -215,7 +215,7 @@ int main(int argc, char *argv[]) {
 
         }
 
-        int ready_to_write = poll (poll_write_fds, N, 0);
+        int ready_to_write = poll (poll_write_fds, N, -1);
 
         if (ready_to_write > 0) {
 
