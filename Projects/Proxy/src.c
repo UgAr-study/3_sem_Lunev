@@ -9,7 +9,7 @@ void free_all(struct Channel *channels, size_t size) {
     }
 }
 
-void GetFromBuffer (struct Channel *channels, int i) {
+void GetFromBuffer (struct Channel *channels, int i, int N) {
 
     int write_ret_val = 0;
 
@@ -38,7 +38,7 @@ void GetFromBuffer (struct Channel *channels, int i) {
     }
 }
 
-void PutInBuffer (struct Channel *channels, int i) {
+void PutInBuffer (struct Channel *channels, int i, int N) {
     int read_ret_val = 0;
 
     if (channels[i].offset_for_write - channels[i].buffer <= channels[i].size - channels[i].empty) {

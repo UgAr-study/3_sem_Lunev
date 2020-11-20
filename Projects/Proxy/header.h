@@ -5,7 +5,6 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/ipc.h>
-//#include <sys/msg.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -16,8 +15,7 @@
 #include <poll.h>
 #include <assert.h>
 
-enum { N = 10, PAGE = 10000 };
-//static int child_deaths = 0;
+enum { N_DEF = 8, PAGE = 1000 };
 
 struct Channel {
     int fd_from, fd_to;
@@ -35,5 +33,5 @@ struct Channel {
 void free_all(struct Channel *channels, size_t size);
 int SetParentDeath (pid_t ppid_bef_fork);
 void child_handler(int s);
-void GetFromBuffer (struct Channel *channels, int i);
-void PutInBuffer (struct Channel *channels, int i);
+void GetFromBuffer (struct Channel *channels, int i, int N);
+void PutInBuffer (struct Channel *channels, int i, int N);

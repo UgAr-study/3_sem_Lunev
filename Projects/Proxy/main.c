@@ -4,9 +4,14 @@ int child_deaths = 0;
 
 int main(int argc, char *argv[]) {
 
+    int N = N_DEF;
     if (argc == 1) {
         printf ("too few arguments\n");
         exit(EXIT_FAILURE);
+    }
+
+    if (argc == 3) {
+        N = strtol(argv[2], NULL, 10);
     }
 
     struct sigaction sa;
@@ -19,6 +24,11 @@ int main(int argc, char *argv[]) {
     }
 
     struct Channel *channels = (struct Channel*) calloc (N, sizeof (struct Channel));
+
+    if (channels == NULL) {
+        printf ("Error: lack of memory\n");
+        exit(EXIT_FAILURE);
+    }
 
     for (int i = 0; i < N; ++i) {
 
@@ -39,7 +49,6 @@ int main(int argc, char *argv[]) {
         }
 
         if (pid == 0) {
-
 
             for (int j = 0; j < i; ++j) {
                 close (channels[j].fd_from);
@@ -103,7 +112,8 @@ int main(int argc, char *argv[]) {
                 close (fds_from[1]);
 
                 channels[i].fd_from = fds_from[0];
-                channels[i].fd_to = -1; //?
+                if (N == 1) channels[i].fd_to = STDOUT_FILENO;
+                else channels[i].fd_to = -1;
 
             } else if (i == N - 1) {
                 close (fds_to[0]);
@@ -127,6 +137,13 @@ int main(int argc, char *argv[]) {
     for (int i = 0; i < N; ++i) {
         channels[i].size = (size_t)pow(3, N - i) * 1024;
         channels[i].buffer = (char*) calloc (channels[i].size, sizeof(char));
+
+        if (channels[i].buffer == NULL) {
+            printf ("Error: lack of memory\n");
+            free_all(channels, i);
+            exit(EXIT_FAILURE);
+        }
+
         channels[i].offset_for_read = channels[i].buffer;
         channels[i].offset_for_write = channels[i].buffer;
         channels[i].empty = channels[i].size;
@@ -135,6 +152,12 @@ int main(int argc, char *argv[]) {
 
     struct pollfd *poll_read_fds = (struct pollfd*) calloc (N, sizeof (struct pollfd));
     struct pollfd *poll_write_fds = (struct pollfd*) calloc (N, sizeof (struct pollfd));
+
+    if (poll_write_fds == NULL || poll_read_fds == NULL) {
+        printf ("Error: lack of memory\n");
+        free_all(channels, N);
+        exit(EXIT_FAILURE);
+    }
 
     for (int i = 0; i < N; ++i) {
         poll_write_fds[i].fd = channels[i].fd_to;
@@ -163,32 +186,32 @@ int main(int argc, char *argv[]) {
 
     while (1) {
 
-       int ready_to_read = poll (poll_read_fds, N, 0);
+        int ready_to_read = poll (poll_read_fds, N, 0);
 
-       if (ready_to_read > 0) {
+        if (ready_to_read > 0) {
 
-           int closed_read_fds = 0;
-           for (int i = 0; i < N; ++i) {
+            int closed_read_fds = 0;
+            for (int i = 0; i < N; ++i) {
 
-               if (poll_read_fds[i].revents & POLLNVAL) {
-                   closed_read_fds++;
-                   continue;
-               }
+                if (poll_read_fds[i].revents & POLLNVAL) {
+                    closed_read_fds++;
+                    continue;
+                }
 
-               if (poll_read_fds[i].revents & POLLRDNORM) {
-                   if (channels[i].empty != 0) {
-                       PutInBuffer(channels, i);
-                   }
-               } else if (poll_read_fds[i].revents & POLLHUP) {
-                   close (channels[i].fd_from);
-               }
-           }
+                if (poll_read_fds[i].revents & POLLRDNORM) {
+                    if (channels[i].empty != 0) {
+                        PutInBuffer(channels, i, N);
+                    }
+                } else if (poll_read_fds[i].revents & POLLHUP) {
+                    close (channels[i].fd_from);
+                }
+            }
 
-           if (closed_read_fds == N) {
-               while (channels[N - 1].full)
-                   GetFromBuffer(channels, N - 1);
-               break;
-           }
+            if (closed_read_fds == N) {
+                while (channels[N - 1].full)
+                    GetFromBuffer(channels, N - 1, N);
+                break;
+            }
 
         }
 
@@ -212,7 +235,7 @@ int main(int argc, char *argv[]) {
                     }
 
                     if (channels[i].full != 0) {
-                        GetFromBuffer(channels, i);
+                        GetFromBuffer(channels, i, N);
                     }
                 }
             }
@@ -230,12 +253,12 @@ void child_handler(int s) {
         int state = 0;
         wait(&state);
         if (WIFEXITED(state)) {
-            if (WEXITSTATUS(state) != EXIT_SUCCESS) {
-                printf ("One of the children was killed\n");
-                exit(EXIT_FAILURE);
+            if (WEXITSTATUS(state) == EXIT_SUCCESS) {
+                child_deaths++;
+                return;
             }
-
-            child_deaths++;
         }
+        printf ("One of the children was killed\n");
+        exit(EXIT_FAILURE);
     }
 }
