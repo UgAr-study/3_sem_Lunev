@@ -60,7 +60,6 @@ int PutInBuffer (struct Channel *channels, int i, int N) {
     if (read_ret_val < 0) {
 
         if (errno == EAGAIN) {
-            // mau be return -1 or smth else
             return -1;
         }
 

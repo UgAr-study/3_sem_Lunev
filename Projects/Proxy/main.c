@@ -87,30 +87,16 @@ int main(int argc, char *argv[]) {
                 fd_to = fds_from[1];
             }
 
+            int spl_ret_val;
 
             while(1) {
 
-                int spl_ret_val;
-                //////
-                char debug_buff[10] = "splice";
-                debug_buff[6] = '0' + i;
-                debug_buff[7] = '\n';
-                //write (STDOUT_FILENO, debug_buff, sizeof(debug_buff));
-                /////
                 if ((spl_ret_val = splice(fd_from, NULL, fd_to, NULL, PAGE, SPLICE_F_MOVE)) == 0) {
                     close (fd_to);
                     close (fd_from);
 
                     exit(EXIT_SUCCESS);
                 }
-
-                /////////////
-                char slp_r_v[2] = {0};
-                slp_r_v[0] = '0' + spl_ret_val;
-                slp_r_v[1] = '\n';
-
-                //write(STDOUT_FILENO, slp_r_v, sizeof(slp_r_v));
-                ////////////
 
                 if (spl_ret_val < 0) {
                     printf ("child[%d]: splice failed\n", i);
@@ -200,9 +186,9 @@ int main(int argc, char *argv[]) {
     fd_set rfds;
     fd_set wfds;
 
+
     while (child_deaths < N) {
 
-        //if closed pipes == 2N - 1 -> break
         FD_ZERO(&rfds);
         FD_ZERO(&wfds);
 
@@ -222,6 +208,7 @@ int main(int argc, char *argv[]) {
 
                 if (channels[i].fd_to > max)
                     max = channels[i].fd_to;
+
             }
 
         }
@@ -243,100 +230,42 @@ int main(int argc, char *argv[]) {
                 //can read from it
                 int num_read = PutInBuffer(channels, i, N);
 
-                if (num_read == 0) { // may be just close (fd_from)? cause it can happen only if the write end was closed
-
-                    //printf("parent: close [%d] fd_from\n", i);
-
+                if (num_read == 0) {
                     close(channels[i].fd_from);
                     channels[i].is_can_read = 0;
                 }
 
                 if (num_read < 0) {
-                    //printf ("smth strange fro read side\n");
+                    printf ("smth strange fro read side\n");
                     continue;
                 }
-
-                //printf ("parent: after read [%d] full = %zu\n", i, channels[i].full);
             }
 
             if (FD_ISSET(channels[i].fd_to, &wfds)) {
                 //can write to it
-                //printf ("parent: before write [%d] full = %zu\n", i, channels[i].full);
                 int num_write = GetFromBuffer(channels, i, N);
 
                 if (num_write < 0) {
-                    printf ("fd_to pipe has no enough space\n");
+                    //fd_to pipe has no enough space
                     continue;
                 }
-
-                //printf ("parent: after write [%d] full = %zu is_can_read = %d\n", i, channels[i].full, channels[i].is_can_read);
             }
 
-            if (i >= child_deaths && channels[i].is_can_read == 0 && channels[i].full == 0) {
-                //printf ("parent: close [%d] fd_to\n", i);
+            if (channels[i].is_can_read == 0 && channels[i].full == 0) {
+
+                if (i != child_deaths) {
+                    printf ("some child died too early\n");
+                    free_all(channels, N);
+                    exit(EXIT_FAILURE);
+                }
+
                 close(channels[i].fd_to);
                 channels[i].is_can_write = 0;
                 child_deaths++;
             }
         }
-
-        /*int ready_to_read = poll (poll_read_fds, N, -1);
-
-        if (ready_to_read > 0) {
-
-            int closed_read_fds = 0;
-            for (int i = 0; i < N; ++i) {
-
-                if (poll_read_fds[i].revents & POLLNVAL) {
-                    closed_read_fds++;
-                    continue;
-                }
-
-                if (poll_read_fds[i].revents & POLLRDNORM) {
-                    if (channels[i].empty != 0) {
-                        PutInBuffer(channels, i, N);
-                    }
-                } else if (poll_read_fds[i].revents & POLLHUP) {
-                    close (channels[i].fd_from);
-                }
-            }
-
-            if (closed_read_fds == N) {
-                while (channels[N - 1].full)
-                    GetFromBuffer(channels, N - 1, N);
-                break;
-            }
-
-        }
-
-        int ready_to_write = poll (poll_write_fds, N, -1);
-
-        if (ready_to_write > 0) {
-
-            for (int i = 0; i < N; ++i) {
-
-                if (poll_write_fds[i].revents & POLLERR) {
-                    close (channels[i].fd_to);
-                    continue;
-                }
-
-                if (poll_write_fds[i].revents & POLLWRNORM) {
-
-                    if (child_deaths == i + 1 && channels[i].full == 0) {
-                        if (i != N - 1) {
-                            close(channels[i].fd_to);
-                        }
-                    }
-
-                    if (channels[i].full != 0) {
-                        GetFromBuffer(channels, i, N);
-                    }
-                }
-            }
-        }*/
     }
 
-//    printf ("parent finish\n");
     free_all(channels, N);
 
     return 0;
@@ -347,13 +276,13 @@ void child_handler(int s) {
     if (s == SIGCHLD) {
         int state = 0;
         wait(&state);
+
         if (WIFEXITED(state)) {
             if (WEXITSTATUS(state) == EXIT_SUCCESS) {
-                //printf ("Child %d successfully finished\n", child_deaths);
-                //child_deaths++;
                 return;
             }
         }
+
         printf ("One of the children was killed\n");
         exit(EXIT_FAILURE);
     }
