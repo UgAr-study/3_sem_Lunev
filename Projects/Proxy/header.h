@@ -15,9 +15,10 @@
 #include <poll.h>
 #include <assert.h>
 
-enum { N_DEF = 8, PAGE = 1000 };
+enum { N_DEF = 8, PAGE = 10000 };
 
 struct Channel {
+    int is_can_write, is_can_read;
     int fd_from, fd_to;
 
     char *buffer;
@@ -33,5 +34,5 @@ struct Channel {
 void free_all(struct Channel *channels, size_t size);
 int SetParentDeath (pid_t ppid_bef_fork);
 void child_handler(int s);
-void GetFromBuffer (struct Channel *channels, int i, int N);
-void PutInBuffer (struct Channel *channels, int i, int N);
+int GetFromBuffer (struct Channel *channels, int i, int N);
+int PutInBuffer (struct Channel *channels, int i, int N);

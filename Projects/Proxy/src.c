@@ -9,7 +9,7 @@ void free_all(struct Channel *channels, size_t size) {
     }
 }
 
-void GetFromBuffer (struct Channel *channels, int i, int N) {
+int GetFromBuffer (struct Channel *channels, int i, int N) {
 
     int write_ret_val = 0;
 
@@ -21,6 +21,12 @@ void GetFromBuffer (struct Channel *channels, int i, int N) {
     }
 
     if (write_ret_val < 0) {
+
+        if (errno == EAGAIN) {
+            // mau be return -1 or smth else
+            return -1;
+        }
+
         perror("Parent: write: ");
         free_all(channels, N);
         exit(EXIT_FAILURE);
@@ -36,9 +42,11 @@ void GetFromBuffer (struct Channel *channels, int i, int N) {
         //we read up to end;
         channels[i].offset_for_read = channels[i].buffer;
     }
+
+    return write_ret_val;
 }
 
-void PutInBuffer (struct Channel *channels, int i, int N) {
+int PutInBuffer (struct Channel *channels, int i, int N) {
     int read_ret_val = 0;
 
     if (channels[i].offset_for_write - channels[i].buffer <= channels[i].size - channels[i].empty) {
@@ -50,6 +58,12 @@ void PutInBuffer (struct Channel *channels, int i, int N) {
     }
 
     if (read_ret_val < 0) {
+
+        if (errno == EAGAIN) {
+            // mau be return -1 or smth else
+            return -1;
+        }
+
         perror("Parent: read: ");
         free_all(channels, N);
         exit(EXIT_FAILURE);
@@ -65,6 +79,8 @@ void PutInBuffer (struct Channel *channels, int i, int N) {
         //we wrote up to end;
         channels[i].offset_for_write = channels[i].buffer;
     }
+
+    return read_ret_val;
 }
 
 int SetParentDeath (pid_t ppid_bef_fork) {

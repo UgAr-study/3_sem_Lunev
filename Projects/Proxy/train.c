@@ -283,6 +283,75 @@ int main () {
         wait(NULL);
     }
 
+
     //sleep(5);
     return 0;
+}
+
+
+int train_poll (int N, int child_deaths) {
+
+    struct Channel *channels = (struct Channel*) calloc (N, sizeof (struct Channel));
+    fd_set rfds;
+    fd_set wfds;
+
+
+    while (1) {
+
+        FD_ZERO(&rfds);
+        FD_ZERO(&wfds);
+
+        int max = 0;
+        for (int i = 0; i < N; ++i) {
+
+            //may be simply is_can_read
+            if (channels[i].is_can_read && channels[i].empty != 0) {
+                FD_SET (channels[i].fd_from, &rfds);
+
+                if (channels[i].fd_from > max)
+                    max = channels[i].fd_from;
+
+            }
+
+            //may be simply is_can_write
+            if (channels[i].is_can_write && channels[i].full != 0) {
+                FD_SET (channels[i].fd_to, &wfds);
+
+                if (channels[i].fd_to > max)
+                    max = channels[i].fd_to;
+            }
+
+        }
+
+        int ret_sel_val = select(max + 1, &rfds, &wfds, NULL, NULL);
+
+        if (ret_sel_val < 0) {
+            perror ("select: ");
+            exit(EXIT_FAILURE);
+        }
+
+        for (int i = 0; i < N; ++i) {
+
+            if (FD_ISSET(channels[i].fd_from, &rfds)) {
+                //can read from it
+                if (PutInBuffer(channels, i, N) == 0 && child_deaths == i + 1) {
+                    close(channels[i].fd_from);
+                    channels[i].is_can_read = 0;
+                }
+            }
+
+            if (FD_ISSET(channels[i].fd_to, &wfds)) {
+                //can write to it
+                GetFromBuffer(channels, i, N);
+
+                if (channels[i].is_can_read == 0 && channels[i].full == 0) {
+                    if (i == N - 1)
+                        return 0;
+
+                    close(channels[i].fd_to);
+                    channels[i].is_can_write = 0;
+                }
+            }
+        }
+    }
 }

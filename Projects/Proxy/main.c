@@ -87,15 +87,30 @@ int main(int argc, char *argv[]) {
                 fd_to = fds_from[1];
             }
 
+
             while(1) {
 
                 int spl_ret_val;
+                //////
+                char debug_buff[10] = "splice";
+                debug_buff[6] = '0' + i;
+                debug_buff[7] = '\n';
+                //write (STDOUT_FILENO, debug_buff, sizeof(debug_buff));
+                /////
                 if ((spl_ret_val = splice(fd_from, NULL, fd_to, NULL, PAGE, SPLICE_F_MOVE)) == 0) {
                     close (fd_to);
                     close (fd_from);
 
                     exit(EXIT_SUCCESS);
                 }
+
+                /////////////
+                char slp_r_v[2] = {0};
+                slp_r_v[0] = '0' + spl_ret_val;
+                slp_r_v[1] = '\n';
+
+                //write(STDOUT_FILENO, slp_r_v, sizeof(slp_r_v));
+                ////////////
 
                 if (spl_ret_val < 0) {
                     printf ("child[%d]: splice failed\n", i);
@@ -112,7 +127,13 @@ int main(int argc, char *argv[]) {
                 close (fds_from[1]);
 
                 channels[i].fd_from = fds_from[0];
-                if (N == 1) channels[i].fd_to = STDOUT_FILENO;
+                channels[i].is_can_read = 1;
+
+                if (N == 1) {
+                    channels[i].fd_to = STDOUT_FILENO;
+                    channels[i].is_can_write = 1;
+                }
+
                 else channels[i].fd_to = -1;
 
             } else if (i == N - 1) {
@@ -120,15 +141,23 @@ int main(int argc, char *argv[]) {
                 close (fds_from[1]);
 
                 channels[i - 1].fd_to = fds_to[1];
+                channels[i - 1].is_can_write = 1;
+
                 channels[i].fd_from = fds_from[0];
+                channels[i].is_can_read = 1;
+
                 channels[i].fd_to = STDOUT_FILENO;
+                channels[i].is_can_write = 1;
 
             } else {
                 close (fds_to[0]);
                 close (fds_from[1]);
 
                 channels[i - 1].fd_to = fds_to[1];
+                channels[i - 1].is_can_write = 1;
+
                 channels[i].fd_from = fds_from[0];
+                channels[i].is_can_read = 1;
             }
 
         }
@@ -150,22 +179,6 @@ int main(int argc, char *argv[]) {
         channels[i].full = 0;
     }
 
-    struct pollfd *poll_read_fds = (struct pollfd*) calloc (N, sizeof (struct pollfd));
-    struct pollfd *poll_write_fds = (struct pollfd*) calloc (N, sizeof (struct pollfd));
-
-    if (poll_write_fds == NULL || poll_read_fds == NULL) {
-        printf ("Error: lack of memory\n");
-        free_all(channels, N);
-        exit(EXIT_FAILURE);
-    }
-
-    for (int i = 0; i < N; ++i) {
-        poll_write_fds[i].fd = channels[i].fd_to;
-        poll_write_fds[i].events = POLLWRNORM;
-
-        poll_read_fds[i].fd = channels[i].fd_from;
-        poll_read_fds[i].events = POLLRDNORM;
-    }
 
     for (int i = 0; i < N; ++i) {
         int res;
@@ -184,9 +197,90 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    while (1) {
+    fd_set rfds;
+    fd_set wfds;
 
-        int ready_to_read = poll (poll_read_fds, N, -1);
+    while (child_deaths < N) {
+
+        //if closed pipes == 2N - 1 -> break
+        FD_ZERO(&rfds);
+        FD_ZERO(&wfds);
+
+        int max = 0;
+        for (int i = 0; i < N; ++i) {
+
+            if (channels[i].is_can_read && channels[i].empty != 0) {
+                FD_SET (channels[i].fd_from, &rfds);
+
+                if (channels[i].fd_from > max)
+                    max = channels[i].fd_from;
+
+            }
+
+            if (channels[i].is_can_write && channels[i].full != 0) {
+                FD_SET (channels[i].fd_to, &wfds);
+
+                if (channels[i].fd_to > max)
+                    max = channels[i].fd_to;
+            }
+
+        }
+
+        int ret_sel_val = select(max + 1, &rfds, &wfds, NULL, NULL);
+
+        if (ret_sel_val < 0) {
+
+            if (errno == EINTR)
+                continue;
+
+            perror ("select: ");
+            exit(EXIT_FAILURE);
+        }
+
+        for (int i = 0; i < N; ++i) {
+
+            if (FD_ISSET(channels[i].fd_from, &rfds)) { //??check is empty = 0
+                //can read from it
+                int num_read = PutInBuffer(channels, i, N);
+
+                if (num_read == 0) { // may be just close (fd_from)? cause it can happen only if the write end was closed
+
+                    //printf("parent: close [%d] fd_from\n", i);
+
+                    close(channels[i].fd_from);
+                    channels[i].is_can_read = 0;
+                }
+
+                if (num_read < 0) {
+                    //printf ("smth strange fro read side\n");
+                    continue;
+                }
+
+                //printf ("parent: after read [%d] full = %zu\n", i, channels[i].full);
+            }
+
+            if (FD_ISSET(channels[i].fd_to, &wfds)) {
+                //can write to it
+                //printf ("parent: before write [%d] full = %zu\n", i, channels[i].full);
+                int num_write = GetFromBuffer(channels, i, N);
+
+                if (num_write < 0) {
+                    printf ("fd_to pipe has no enough space\n");
+                    continue;
+                }
+
+                //printf ("parent: after write [%d] full = %zu is_can_read = %d\n", i, channels[i].full, channels[i].is_can_read);
+            }
+
+            if (i >= child_deaths && channels[i].is_can_read == 0 && channels[i].full == 0) {
+                //printf ("parent: close [%d] fd_to\n", i);
+                close(channels[i].fd_to);
+                channels[i].is_can_write = 0;
+                child_deaths++;
+            }
+        }
+
+        /*int ready_to_read = poll (poll_read_fds, N, -1);
 
         if (ready_to_read > 0) {
 
@@ -239,9 +333,10 @@ int main(int argc, char *argv[]) {
                     }
                 }
             }
-        }
+        }*/
     }
 
+//    printf ("parent finish\n");
     free_all(channels, N);
 
     return 0;
@@ -254,7 +349,8 @@ void child_handler(int s) {
         wait(&state);
         if (WIFEXITED(state)) {
             if (WEXITSTATUS(state) == EXIT_SUCCESS) {
-                child_deaths++;
+                //printf ("Child %d successfully finished\n", child_deaths);
+                //child_deaths++;
                 return;
             }
         }
