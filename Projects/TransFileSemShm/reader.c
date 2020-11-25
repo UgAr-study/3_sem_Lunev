@@ -124,7 +124,18 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        V (semid, MEMORY, 0);
+        {
+            struct sembuf op;
+
+            op.sem_num = MEMORY;
+            op.sem_op = 1;
+            op.sem_flg = 0;
+
+            if (semop (semid, &op, 1) < 0) {
+                perror("V PRINT: semop: ");
+                exit(EXIT_FAILURE);
+            }
+        }
     }
 
     {

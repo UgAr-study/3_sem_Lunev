@@ -157,7 +157,18 @@ int main(int argc, char *argv[]) {
 
         memcpy (shmbuf, &buffer, sizeof(buffer));
 
-        V (semid, PRINT, 0);
+        {
+            struct sembuf op;
+
+            op.sem_num = PRINT;
+            op.sem_op = 1;
+            op.sem_flg = 0;
+
+            if (semop (semid, &op, 1) < 0) {
+                perror("V PRINT: semop: ");
+                exit(EXIT_FAILURE);
+            }
+        }
     }
 
     {
