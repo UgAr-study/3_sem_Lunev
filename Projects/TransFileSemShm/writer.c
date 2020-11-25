@@ -7,10 +7,7 @@ int main(int argc, char *argv[]) {
         exit (EXIT_FAILURE);
     }
 
-    //printf ("Writer pid is %d\n\n", getpid());
-    //const char *file = "test.txt";
     int fdfrom = open (argv[1], O_RDONLY);
-    //printf ("fd from is %d\n", fdfrom);
 
     if (fdfrom < 0) {
         printf ("file is not opened\n");
@@ -20,10 +17,6 @@ int main(int argc, char *argv[]) {
     key_t key = ftok ("src.c", 0);
 
     int semid = semget (key, 6, 0666 | IPC_CREAT);
-
-    //printf ("semid = %d\n", semid);
-    //printf ("Writer: before all initializations\n");
-    //GetAllSemsInfo(semid);
 
     {
         struct sembuf ops[2];
@@ -69,7 +62,7 @@ int main(int argc, char *argv[]) {
         ops[1].sem_flg = SEM_UNDO;
 
         if (semop(semid, ops, 2) < 0) {
-            perror("semop: ");
+            perror("Set PRINT: semop: ");
             exit(EXIT_FAILURE);
         }
     }
@@ -93,28 +86,23 @@ int main(int argc, char *argv[]) {
             printf ("Writer: Waiting reader failed\n");
             exit(EXIT_FAILURE);
         }
-
-
     }
 
 
-    int shmid = shmget (key, PAGESIZE * sizeof(char), 0666 | IPC_CREAT);
+    int shmid = shmget (key, sizeof(struct buffer), 0666 | IPC_CREAT);
+
+    if (shmid < 0) {
+        perror("shmget: ");
+        exit(EXIT_FAILURE);
+    }
+
     char *shmbuf = (char*) shmat(shmid, NULL, 0);
 
-    for (int i = 0; i < PAGESIZE; ++i)
-        shmbuf[i] = '\0';
-
-
-
     while (1) {
-
-        //printf ("Writer in while\n");
-        //GetAllSemsInfo(semid);
 
         {
             struct sembuf ops[3];
 
-            //Better: check PAIR == 2 with semctl(GETVAL)
             ops[0].sem_num = PAIR;
             ops[0].sem_op = -2;
             ops[0].sem_flg = IPC_NOWAIT;
@@ -133,14 +121,10 @@ int main(int argc, char *argv[]) {
             }
         }
 
-        for (int i = 0; i < PAGESIZE; ++i)
-            shmbuf[i] = '\0';
-
         struct buffer buffer;
-        buffer.size = read (fdfrom, buffer.buf, PAGESIZE - sizeof(int));
+        buffer.size = read (fdfrom, buffer.buf, PAGESIZE);
 
         if (buffer.size == 0) {
-    //        printf ("Writer finish\n");
 
             {
                 struct sembuf ops[2];
@@ -163,13 +147,15 @@ int main(int argc, char *argv[]) {
             break;
         }
 
-        if (read_ret_val < 0) {
+        if (buffer.size < 0) {
             perror ("read from ():");
             semctl (semid, 0, IPC_RMID);
             shmdt(shmbuf);
             shmctl (shmid, IPC_RMID, NULL);
             exit (EXIT_FAILURE);
         }
+
+        memcpy (shmbuf, &buffer, sizeof(buffer));
 
         V (semid, PRINT, 0);
     }

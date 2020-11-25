@@ -2,13 +2,9 @@
 
 int main(int argc, char *argv[]) {
 
-    //printf ("Reader pid is %d\n\n", getpid());
     key_t key = ftok ("src.c", 0);
 
     int semid = semget (key, 6, 0666 | IPC_CREAT);
-
-    //printf ("Reader: before all initializations\n");
-    //GetAllSemsInfo(semid);
 
     {
         struct sembuf ops[2];
@@ -40,7 +36,6 @@ int main(int argc, char *argv[]) {
         }
     }
 
-    // ??????? may be in writer.c check REXIST ?????
     semctl(semid, MEMORY, SETVAL, 2);
 
     {
@@ -76,18 +71,23 @@ int main(int argc, char *argv[]) {
         ops[2].sem_flg = SEM_UNDO;
 
         if (semop(semid, ops, 3) < 0) {
-            printf ("Reader: Waiting failed\n");
+            printf ("Reader: Waiting writer failed\n");
             exit(EXIT_FAILURE);
         }
     }
 
-    int shmid = shmget (key, PAGESIZE * sizeof(char), 0666 | IPC_CREAT);
+    int shmid = shmget (key, sizeof(struct buffer), 0666 | IPC_CREAT);
+
+    if (shmid < 0) {
+        perror("shmget: ");
+        exit(EXIT_FAILURE);
+    }
+
     char *shmbuf = (char*) shmat(shmid, NULL, 0);
 
     while (1) {
 
         {
-            // may be check PAIR == 2 ( semctl (GETVAL) );
             struct sembuf ops[4];
 
             ops[0].sem_num = PAIR;
@@ -108,16 +108,13 @@ int main(int argc, char *argv[]) {
 
 
             if (semop(semid, ops, 4) < 0) {
-                //perror("semop in reader: ");
-                //printf("Reader: writer died or finished\n");
-                write (STDOUT_FILENO, "\0", 1);
                 break;
             }
         }
 
-        //printf (">>>> \n");
-        int write_ret_val = write (STDOUT_FILENO, shmbuf, PAGESIZE);
-        //printf ("<<<<\n");
+        struct buffer buffer;
+        memcpy(&buffer, shmbuf, sizeof(buffer));
+        int write_ret_val = write (STDOUT_FILENO, buffer.buf, buffer.size);
 
         if (write_ret_val < 0) {
             perror("write from shm ():");

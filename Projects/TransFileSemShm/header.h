@@ -10,13 +10,14 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <dirent.h>
+#include <string.h>
 
 
-enum { WEXIST = 0, REXIST = 1, PRINT = 2, MEMORY = 3, PAIR = 4, FINISH = 5, PAGESIZE = 20 };
+enum { WEXIST = 0, REXIST = 1, PRINT = 2, MEMORY = 3, PAIR = 4, FINISH = 5, PAGESIZE = 100 };
 
 struct buffer {
     int size;
-    char buf[PAGESIZE - sizeof(int)];
+    char buf[PAGESIZE];
 };
 
 int P (int semid, int n, int flags);
