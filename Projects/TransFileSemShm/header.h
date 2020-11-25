@@ -12,7 +12,12 @@
 #include <dirent.h>
 
 
-enum { WEXIST = 0, REXIST = 1, PRINT = 2, MEMORY = 3, PAIR = 4, FINISH = 5, PAGESIZE = 10 };
+enum { WEXIST = 0, REXIST = 1, PRINT = 2, MEMORY = 3, PAIR = 4, FINISH = 5, PAGESIZE = 20 };
+
+struct buffer {
+    int size;
+    char buf[PAGESIZE - sizeof(int)];
+};
 
 int P (int semid, int n, int flags);
 int V (int semid, int n, int flags);

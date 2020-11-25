@@ -42,53 +42,68 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    {
+        struct sembuf op;
+
+        op.sem_num = PAIR;
+        op.sem_op = 0;
+        op.sem_flg = 0;
+
+        if (semop(semid, &op, 1) < 0) {
+            perror ("Checking PAIR: semop: ");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    semctl(semid, PRINT, SETVAL, 1);
 
     {
         struct sembuf ops[2];
 
-        ops[0].sem_num = REXIST;
-        ops[0].sem_op = -1;
-        ops[0].sem_flg = 0;
+        ops[0].sem_num = WEXIST;
+        ops[0].sem_op = 1;
+        ops[0].sem_flg = SEM_UNDO;
 
-        ops[1].sem_num = REXIST;
-        ops[1].sem_op = 1;
-        ops[1].sem_flg = 0;
+        ops[1].sem_num = PRINT;
+        ops[1].sem_op = -1;
+        ops[1].sem_flg = SEM_UNDO;
 
         if (semop(semid, ops, 2) < 0) {
-            printf ("Writer: Waiting failed\n");
+            perror("semop: ");
             exit(EXIT_FAILURE);
         }
-
-        semctl(semid, MEMORY, SETVAL, 1);
     }
-
 
     {
         struct sembuf ops[3];
 
-        ops[0].sem_num = PAIR;
-        ops[0].sem_op = -1;
+        ops[0].sem_num = REXIST;
+        ops[0].sem_op = -2;
         ops[0].sem_flg = 0;
 
-        ops[1].sem_num = PAIR;
-        ops[1].sem_op = 1;
+        ops[1].sem_num = REXIST;
+        ops[1].sem_op = 2;
         ops[1].sem_flg = 0;
 
         ops[2].sem_num = PAIR;
         ops[2].sem_op = 1;
         ops[2].sem_flg = SEM_UNDO;
 
-        if (semop (semid, ops, 3) < 0) {
-            perror ("Writer: PAIR fail\n");
+        if (semop(semid, ops, 3) < 0) {
+            printf ("Writer: Waiting reader failed\n");
             exit(EXIT_FAILURE);
         }
+
+
     }
+
 
     int shmid = shmget (key, PAGESIZE * sizeof(char), 0666 | IPC_CREAT);
     char *shmbuf = (char*) shmat(shmid, NULL, 0);
 
     for (int i = 0; i < PAGESIZE; ++i)
         shmbuf[i] = '\0';
+
 
 
     while (1) {
@@ -99,12 +114,13 @@ int main(int argc, char *argv[]) {
         {
             struct sembuf ops[3];
 
-            ops[0].sem_num = REXIST;
-            ops[0].sem_op = -1;
+            //Better: check PAIR == 2 with semctl(GETVAL)
+            ops[0].sem_num = PAIR;
+            ops[0].sem_op = -2;
             ops[0].sem_flg = IPC_NOWAIT;
 
-            ops[1].sem_num = REXIST;
-            ops[1].sem_op = 1;
+            ops[1].sem_num = PAIR;
+            ops[1].sem_op = 2;
             ops[1].sem_flg = 0;
 
             ops[2].sem_num = MEMORY;
@@ -120,9 +136,10 @@ int main(int argc, char *argv[]) {
         for (int i = 0; i < PAGESIZE; ++i)
             shmbuf[i] = '\0';
 
-        int read_ret_val = read (fdfrom, shmbuf, PAGESIZE);
+        struct buffer buffer;
+        buffer.size = read (fdfrom, buffer.buf, PAGESIZE - sizeof(int));
 
-        if (read_ret_val == 0) {
+        if (buffer.size == 0) {
     //        printf ("Writer finish\n");
 
             {
@@ -130,7 +147,7 @@ int main(int argc, char *argv[]) {
 
                 ops[0].sem_num = PRINT;
                 ops[0].sem_op = 1;
-                ops[0].sem_flg = SEM_UNDO;
+                ops[0].sem_flg = 0;
 
                 ops[1].sem_num = FINISH;
                 ops[1].sem_op = 1;
@@ -157,9 +174,6 @@ int main(int argc, char *argv[]) {
         V (semid, PRINT, 0);
     }
 
-    //printf ("Writer: state after while\n");
-    //GetAllSemsInfo(semid);
-
     {
         struct sembuf ops[2];
 
@@ -167,31 +181,15 @@ int main(int argc, char *argv[]) {
         ops[0].sem_op = -1;
         ops[0].sem_flg = SEM_UNDO;
 
-        semop(semid, ops, 1);
+        ops[1].sem_num = WEXIST;
+        ops[1].sem_op = -2;
+        ops[1].sem_flg = SEM_UNDO;
 
-        ops[1].sem_num = PAIR;
-        ops[1].sem_op = 0;
-        ops[1].sem_flg = 0;
-
-        semop(semid, ops + 1, 1);
+        semop(semid, ops, 2);
     }
 
-    {
-        struct sembuf op;
-
-        op.sem_num = WEXIST;
-        op.sem_op = -1;
-        op.sem_flg = SEM_UNDO;
-
-        semop(semid, &op, 1);
-    }
-
-    //GetAllSemsInfo(semid);
-
-    semctl(semid, 0, IPC_RMID);
     close (fdfrom);
 
-    //printf ("Writer: success!\n");
     return 0;
 }
 

@@ -25,16 +25,14 @@ int main(int argc, char *argv[]) {
             perror("Checking REXIST: semop: ");
             exit(EXIT_FAILURE);
         }
-
-        semctl(semid, PRINT, SETVAL, 0);
     }
 
     {
         struct sembuf op;
 
         op.sem_num = PAIR;
-        op.sem_op = 1;
-        op.sem_flg = SEM_UNDO;
+        op.sem_op = 0;
+        op.sem_flg = 0;
 
         if (semop(semid, &op, 1) < 0) {
             perror ("Reader: PAIR fail\n");
@@ -42,18 +40,42 @@ int main(int argc, char *argv[]) {
         }
     }
 
+    // ??????? may be in writer.c check REXIST ?????
+    semctl(semid, MEMORY, SETVAL, 2);
+
     {
         struct sembuf ops[2];
 
+        ops[0].sem_num = REXIST;
+        ops[0].sem_op = 1;
+        ops[0].sem_flg = SEM_UNDO;
+
+        ops[1].sem_num = MEMORY;
+        ops[1].sem_op = -1;
+        ops[1].sem_flg = SEM_UNDO;
+
+        if (semop(semid, ops, 2) < 0) {
+            printf ("Reader: decrement MEMORY failed\n");
+            exit(EXIT_FAILURE);
+        }
+    }
+
+    {
+        struct sembuf ops[3];
+
         ops[0].sem_num = WEXIST;
-        ops[0].sem_op = -1;
+        ops[0].sem_op = -2;
         ops[0].sem_flg = 0;
 
         ops[1].sem_num = WEXIST;
-        ops[1].sem_op = 1;
+        ops[1].sem_op = 2;
         ops[1].sem_flg = 0;
 
-        if (semop(semid, ops, 2) < 0) {
+        ops[2].sem_num = PAIR;
+        ops[2].sem_op = 1;
+        ops[2].sem_flg = SEM_UNDO;
+
+        if (semop(semid, ops, 3) < 0) {
             printf ("Reader: Waiting failed\n");
             exit(EXIT_FAILURE);
         }
@@ -64,32 +86,31 @@ int main(int argc, char *argv[]) {
 
     while (1) {
 
-        //printf ("Reader in while\n");
-        //GetAllSemsInfo(semid);
-
         {
+            // may be check PAIR == 2 ( semctl (GETVAL) );
             struct sembuf ops[4];
 
-            ops[0].sem_num = WEXIST;
-            ops[0].sem_op = -1;
+            ops[0].sem_num = PAIR;
+            ops[0].sem_op = -2;
             ops[0].sem_flg = IPC_NOWAIT;
 
-            ops[1].sem_num = WEXIST;
-            ops[1].sem_op = 1;
+            ops[1].sem_num = PAIR;
+            ops[1].sem_op = 2;
             ops[1].sem_flg = 0;
 
-            ops[2].sem_num = FINISH;
-            ops[2].sem_op = 0;
-            ops[2].sem_flg = IPC_NOWAIT;
+            ops[2].sem_num = PRINT;
+            ops[2].sem_op = -1;
+            ops[2].sem_flg = 0;
 
-            ops[3].sem_num = PRINT;
-            ops[3].sem_op = -1;
-            ops[3].sem_flg = 0;
+            ops[3].sem_num = FINISH;
+            ops[3].sem_op = 0;
+            ops[3].sem_flg = IPC_NOWAIT;
 
 
             if (semop(semid, ops, 4) < 0) {
                 //perror("semop in reader: ");
                 //printf("Reader: writer died or finished\n");
+                write (STDOUT_FILENO, "\0", 1);
                 break;
             }
         }
@@ -109,10 +130,6 @@ int main(int argc, char *argv[]) {
         V (semid, MEMORY, 0);
     }
 
-
-    //printf ("Reader: state after while\n");
-    //GetAllSemsInfo(semid);
-
     {
         struct sembuf ops[2];
 
@@ -120,30 +137,12 @@ int main(int argc, char *argv[]) {
         ops[0].sem_op = -1;
         ops[0].sem_flg = SEM_UNDO;
 
-        semop(semid, ops, 1);
+        ops[1].sem_num = REXIST;
+        ops[1].sem_op = -2;
+        ops[1].sem_flg = SEM_UNDO;
 
-        ops[1].sem_num = PAIR;
-        ops[1].sem_op = 0;
-        ops[1].sem_flg = 0;
-
-        semop(semid, ops + 1, 1);
+        semop(semid, ops, 2);
     }
-
-    {
-        struct sembuf op;
-
-        op.sem_num = REXIST;
-        op.sem_op = -1;
-        op.sem_flg = SEM_UNDO;
-
-        semop(semid, &op, 1);
-    }
-
-    //GetAllSemsInfo(semid);
-
-    semctl(semid, 0, IPC_RMID);
-
-    //printf ("Reader: success!\n");
 
     return 0;
 }
