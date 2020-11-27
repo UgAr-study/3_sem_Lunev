@@ -224,7 +224,7 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        for (int i = 0; i < N; ++i) {
+        for (int i = child_deaths; i < N; ++i) {
 
             if (FD_ISSET(channels[i].fd_from, &rfds)) { //??check is empty = 0
                 //can read from it
@@ -254,7 +254,7 @@ int main(int argc, char *argv[]) {
             if (channels[i].is_can_read == 0 && channels[i].full == 0) {
 
                 if (i != child_deaths) {
-                    printf ("some child died too early\n");
+                    printf ("i = %d; some child died too early; ch_deaths = %d\n", i, child_deaths);
                     free_all(channels, N);
                     exit(EXIT_FAILURE);
                 }
