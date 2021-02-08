@@ -1,24 +1,22 @@
-#include <stdio.h>
+#include <assert.h>
 #include "RBTree.h"
+#include "tester.h"
 
-int main(int argc, char *argv[]) {
+int main() {
 
-    if (argc < 2) {
-        fprintf(stderr, "Too few arguments\n");
-        return 0;
-    }
+    struct array data = testInput();
+    assert (data.arr);
 
-    int* arr = testFromFile (argv[1]);
+    struct Node* tree = NULL;
 
-    struct Node* tree;
-
-    tree = addItem(NULL, 10);
-
+    for (int i = 0; i < data.size; ++i)
+        tree = addItem(tree, data.arr[i]);
 
     if (!tree)
         printf ("Ooops...\n");
     else
         printTree(tree);
+
 
     deleteTree (tree);
     return 0;

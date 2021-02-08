@@ -4,6 +4,15 @@
 
 #include "RBTree.h"
 
+
+
+
+//                              Find functions
+//==========================================================================================
+
+
+
+
 struct Node* findTop (struct Node* node) {
 
     if (node == NULL)
@@ -44,7 +53,7 @@ struct Node* findGrandparent(struct Node *node) {
         return NULL;
 }
 
-struct Node* findUncle(struct Node* node) {
+struct Node* findUncle (struct Node* node) {
 
     struct Node* grandpa = findGrandparent(node);
 
@@ -57,7 +66,47 @@ struct Node* findUncle(struct Node* node) {
         return grandpa->left;
 }
 
-void leftRotation(struct Node *node) {
+struct Node* findBrother (struct Node* node) {
+
+    if (node == NULL || node->parent == NULL)
+        return NULL;
+
+    if (node == node->parent->left)
+        return node->parent->right;
+    else
+        return node->parent->left;
+}
+
+struct Node* findMax (struct Node* tree) {
+
+    if (tree == NULL)
+        return NULL;
+
+    if (tree->right)
+        return findMax (tree->right);
+    else
+        return tree;
+}
+
+struct Node* findMin (struct Node* tree) {
+
+    if (tree == NULL)
+        return NULL;
+
+    if (tree->left)
+        return findMin (tree->left);
+    else
+        return tree;
+}
+
+
+//                              Rotate functions
+//==========================================================================================
+
+
+
+
+void leftRotation (struct Node* node) {
 
     struct Node* pivot = node->right;
 
@@ -96,6 +145,14 @@ void rightRotation(struct Node *node) {
     node->parent = pivot;
     pivot->right = node;
 }
+
+
+
+
+//                              Inserting element
+//==========================================================================================
+
+
 
 /*
  * function inserts new node in tree if it is unique;
@@ -222,6 +279,182 @@ void insert_case5(struct Node* node) {
     }
 }
 
+
+
+
+//                              Deleting element
+//==========================================================================================
+
+
+struct Node* deleteItem (struct Node* node) {
+
+    if (node == NULL)
+        return NULL;
+
+    struct Node* M;
+
+    if (node->left)
+        M = findMax (node->left);
+    else if (node->right)
+        M = findMin (node->right);
+    else {
+        //TODO:
+        printf ("I got in TODO if!\n");
+        return NULL; // not final version, need to be done!
+    }
+
+    deleteTheOnlyChild(M);
+    //TODO:
+}
+
+void replaceWithChild (struct Node* node, struct Node* child) {
+
+    if (node == NULL)
+        return;
+
+    if (child != node->left && child != node->right)
+        return;
+
+    child->parent = node->parent;
+
+    if (node->parent == NULL) {
+        //TODO:
+        printf ("I got in TODO if!\n");
+    }
+
+    if (node == node->parent->left) {
+        node->parent->left = child;
+    } else {
+        node->parent->right = child;
+    }
+}
+
+int deleteTheOnlyChild(struct Node* node) {
+    /*
+     * Условие: n имеет не более одного ненулевого потомка.
+     */
+
+    if (node->left && node->right)
+        return NOT_THE_ONLY_CHILD;
+
+    struct Node *child;
+
+    if (node->right)
+        child = node->left;
+    else
+        child = node->right;
+
+    replaceWithChild (node, child);
+    if (node->color == BLACK) {
+        if (child->color == RED)
+            child->color = BLACK;
+        else
+            delete_case1(child);
+    }
+
+    free(node);
+    return 0;
+}
+
+void delete_case1 (struct Node* node)
+{
+    if (node->parent != NULL)
+        delete_case2(node);
+}
+
+void delete_case2 (struct Node* node) {
+
+    struct Node* brother = findBrother (node);
+
+    if (brother->color == RED) {
+        node->parent->color = RED;
+        brother->color = BLACK;
+
+        if (node == node->parent->left)
+            leftRotation (node->parent);
+        else
+            rightRotation (node->parent);
+    }
+
+    delete_case3 (node);
+}
+
+void delete_case3 (struct Node* node) {
+
+    struct Node *brother = findBrother (node);
+
+    if ((node->parent->color == BLACK) &&
+        (brother->color == BLACK) &&
+        (brother->left == NULL || brother->left->color == BLACK) &&
+        (brother->right == NULL || brother->right->color == BLACK)) {
+
+        brother->color = RED;
+        delete_case1(node->parent);
+    } else
+        delete_case4(node);
+}
+
+void delete_case4 (struct Node* node) {
+
+    struct Node *brother = findBrother (node);
+
+    if ((node->parent->color == RED) &&
+        (brother->color == BLACK) &&
+        (brother->left == NULL  || brother->left->color == BLACK) &&
+        (brother->right == NULL || brother->right->color == BLACK))  {
+
+        brother->color = RED;
+        node->parent->color = BLACK;
+    } else
+        delete_case5(node);
+}
+
+void delete_case5 (struct Node* node) {
+
+    struct Node *brother = findBrother (node);
+
+    if  (brother->color == BLACK) { /* this if statement is trivial,
+due to case 2 (even though case 2 changed the sibling to a sibling's child,
+the sibling's child can't be red, since no red parent can have a red child). */
+/* the following statements just force the red to be on the left of the left of the parent,
+   or right of the right, so case six will rotate correctly. */
+        if ((node == node->parent->left) &&
+            (brother->right == NULL || brother->right->color == BLACK) &&
+            (brother->left && brother->left->color == RED)) { /* this last test is trivial too due to cases 2-4. */
+
+            brother->color = RED;
+            brother->left->color = BLACK;
+            rightRotation(brother);
+
+        } else if ((node == node->parent->right) &&
+                   (brother->left == NULL || brother->left->color == BLACK) &&
+                   (brother->right && brother->right->color == RED)) { /* this last test is trivial too due to cases 2-4. */
+
+            brother->color = RED;
+            brother->right->color = BLACK;
+            leftRotation(brother);
+        }
+    }
+
+    delete_case6(node);
+}
+
+void delete_case6 (struct Node* node) {
+
+    struct Node* brother = findBrother (node);
+
+    brother->color = node->parent->color;
+    node->parent->color = BLACK;
+
+    if (node == node->parent->left) {
+        brother->right->color = BLACK;
+        leftRotation (node->parent);
+    } else {
+        brother->left->color = BLACK;
+        rightRotation (node->parent);
+    }
+}
+
 void deleteTree (struct Node* tree) {
 
     if (tree == NULL)
@@ -236,6 +469,12 @@ void deleteTree (struct Node* tree) {
 }
 
 
+
+//                              Dump functions
+//==========================================================================================
+
+
+
 static void writeIndents (int indents) {
     for (int i = 0; i < indents; ++i)
         printf (":::|");
@@ -243,7 +482,10 @@ static void writeIndents (int indents) {
 
 static void printNode (struct Node* node, int indents) {
     writeIndents(indents);
-    printf ("%d\n", node->data);
+    if (node == NULL)
+        printf ("NULL\n");
+    else
+        printf ("%d\n", node->data);
 }
 
 
@@ -253,15 +495,12 @@ void printTree (struct Node* tree) {
 
 void printTreeWithIndents (struct Node* tree, int indents) {
 
+    printNode(tree, indents);
+
     if (tree == NULL)
         return;
 
-    printNode(tree, indents);
-
-    if (tree->left)
-        printTreeWithIndents(tree->left, indents + 1);
-    if (tree->right)
-        printTreeWithIndents(tree->right, indents + 1);
-
+    printTreeWithIndents(tree->left, indents + 1);
+    printTreeWithIndents(tree->right, indents + 1);
 }
 
