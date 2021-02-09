@@ -3,14 +3,47 @@
 //
 
 #include "RBTree.h"
+#include "helper.h"
 
+//                              Hash function
+//==========================================================================================
 
-
+unsigned getHash (int* data) {
+    return (unsigned long)data;
+}
 
 //                              Find functions
 //==========================================================================================
 
+int isInTree (struct Node* node, int* item) {
+    return findItem(node, item) != NULL;
+}
 
+
+struct Node* findItem (struct Node* node, int* item) {
+
+    if (item == NULL || node == NULL)
+        return NULL;
+
+    struct Node* tree = findTop(node);
+
+    struct Node* parent = findParent(tree, getHash(item));
+
+    if (parent == NULL) {
+        if (tree->data == item)
+            return tree;
+        else
+            return NULL;
+    }
+
+    if (parent->right && parent->right->data == item)
+        return parent->right;
+
+    if (parent->left && parent->left->data == item)
+        return parent->left;
+
+    return NULL;
+}
 
 
 struct Node* findTop (struct Node* node) {
@@ -27,22 +60,23 @@ struct Node* findTop (struct Node* node) {
 }
 
 
-struct Node* findParent (struct Node* tree, int item) {
+struct Node* findParent (struct Node* tree, unsigned key) {
 
     if (tree == NULL)
         return NULL;
 
-    if (tree->data >= item) {
+    if (tree->key > key) {
         if (tree->left)
-            return findParent(tree->left, item);
+            return findParent(tree->left, key);
         else
             return tree;
-    } else {
+    } else if (tree->key < key){
         if (tree->right)
-            return findParent(tree->right, item);
+            return findParent(tree->right, key);
         else
             return tree;
-    }
+    } else
+        return tree->parent;
 }
 
 struct Node* findGrandparent(struct Node *node) {
@@ -159,7 +193,16 @@ void rightRotation(struct Node *node) {
  * the top of the tree can change, so it returns the top
  * of the updated tree
  */
-struct Node* addItem (struct Node* tree, int item) {
+struct Node* addItem (struct Node* tree, int* item) {
+
+    tree = findTop(tree);
+
+    if (item == NULL)
+        return tree;
+
+    if (isInTree(tree, item)) {
+        return tree;
+    }
 
     struct Node* node = (struct Node*) calloc (1, sizeof(struct Node));
     if (node == NULL) {
@@ -168,11 +211,12 @@ struct Node* addItem (struct Node* tree, int item) {
 
     node->data = item;
     node->color = RED;
+    node->key = getHash(item);
     node->parent = NULL;
     node->left = NULL;
     node->right = NULL;
 
-    struct Node* parent = findParent (tree, item);
+    struct Node* parent = findParent (tree, node->key);
 
     insert (parent, node);
 
@@ -188,7 +232,7 @@ void insert (struct Node* parent, struct Node* node) {
         return;
     }
 
-    if (parent->data > node->data)
+    if (parent->key > node->key)
         parent->left = node;
     else
         parent->right = node;
@@ -285,49 +329,78 @@ void insert_case5(struct Node* node) {
 //                              Deleting element
 //==========================================================================================
 
+struct Node* deleteItem (struct Node* tree, int *item) {
 
-struct Node* deleteItem (struct Node* node) {
+    tree = findTop(tree);
+
+    if (item == NULL || tree == NULL)
+        return tree;
+
+    struct Node* node = findItem(tree, item);
+
+    if (node)
+        return deleteNode (node);
+    else
+        return NULL;
+}
+
+struct Node* deleteNode (struct Node* node) {
 
     if (node == NULL)
         return NULL;
 
-    struct Node* M;
+    struct Node* M, *leaf = NULL;
+    struct Node* tmp = node;
 
     if (node->left)
         M = findMax (node->left);
     else if (node->right)
         M = findMin (node->right);
     else {
+        tmp = node->parent;
+        M = node;
         //TODO:
         printf ("I got in TODO if!\n");
-        return NULL; // not final version, need to be done!
+        //return NULL; // not final version, need to be done!
     }
+
+    if (M->left == NULL && M->right == NULL) {
+
+        leaf = (struct Node*) calloc (1, sizeof(struct Node));
+
+        M->right = leaf;
+
+        if (M->right == NULL)
+            return node; //return the error code
+
+        M->right->right = NULL;
+        M->right->left  = NULL;
+        M->right->data  = NULL;
+        M->right->key = 0;
+        M->right->parent = node;
+        M->right->color = BLACK;
+    }
+
+    node->data = M->data;
+    node->key  = M->key;
 
     deleteTheOnlyChild(M);
     //TODO:
-}
+    if (leaf) {
 
-void replaceWithChild (struct Node* node, struct Node* child) {
+        if (leaf->parent) {
+            if (leaf == leaf->parent->left)
+                leaf->parent->left = NULL;
+            else
+                leaf->parent->right = NULL;
+        }
 
-    if (node == NULL)
-        return;
-
-    if (child != node->left && child != node->right)
-        return;
-
-    child->parent = node->parent;
-
-    if (node->parent == NULL) {
-        //TODO:
-        printf ("I got in TODO if!\n");
+        free(leaf);
     }
 
-    if (node == node->parent->left) {
-        node->parent->left = child;
-    } else {
-        node->parent->right = child;
-    }
+    return findTop(tmp);
 }
+
 
 int deleteTheOnlyChild(struct Node* node) {
     /*
@@ -339,7 +412,7 @@ int deleteTheOnlyChild(struct Node* node) {
 
     struct Node *child;
 
-    if (node->right)
+    if (node->right == NULL)
         child = node->left;
     else
         child = node->right;
@@ -355,6 +428,31 @@ int deleteTheOnlyChild(struct Node* node) {
     free(node);
     return 0;
 }
+
+
+void replaceWithChild (struct Node* node, struct Node* child) {
+
+    if (node == NULL)
+        return;
+
+    /*if (child != node->left && child != node->right)
+        return;*/
+
+    child->parent = node->parent;
+
+    if (node->parent == NULL) {
+        //TODO:
+        printf ("I got in TODO if!\n");
+        return;
+    }
+
+    if (node == node->parent->left) {
+        node->parent->left = child;
+    } else {
+        node->parent->right = child;
+    }
+}
+
 
 void delete_case1 (struct Node* node)
 {
@@ -468,6 +566,18 @@ void deleteTree (struct Node* tree) {
     free (tree);
 }
 
+//                              Foreach functions
+//==========================================================================================
+
+int foreach (struct Node* tree, int (*foo)(struct Node el, void* data), void* data) {
+
+    if (tree == NULL)
+        return 1;
+
+    foreach(tree->left, foo, data);
+    foreach(tree->right, foo, data);
+    return foo (*tree, data);
+}
 
 
 //                              Dump functions
@@ -485,7 +595,7 @@ static void printNode (struct Node* node, int indents) {
     if (node == NULL)
         printf ("NULL\n");
     else
-        printf ("%d\n", node->data);
+        printf ("%d\n", *node->data);
 }
 
 
