@@ -5,42 +5,80 @@
 #include "RBTree.h"
 #include "helper.h"
 
-//                              Hash function
+
+struct Node {
+    struct Node *parent, *left, *right;
+    enum color_t color;
+    int* data;
+    unsigned key;
+};
+
+struct Map {
+    struct Node* treeRoot;
+};
+
+//                              Create function
 //==========================================================================================
 
+struct Map createMap (struct Array data) {
+    struct Map map;
+    map.treeRoot = NULL;
+
+    if (data.size == 0 || data.arr == NULL)
+        return map;
+
+    for (int i = 0; i < data.size; ++i) {
+        int err = 0;
+        addItem(&map, data.arr[i], &err);
+        if (err) {
+            //TODO:
+        }
+    }
+
+    return map;
+}
+
+
+//                              Hash function
+//==========================================================================================
+/*
 unsigned getHash (int* data) {
     return (unsigned long)data;
+}*/
+
+
+unsigned getHash (int* data) {
+    return (unsigned) *data;
 }
 
 //                              Find functions
 //==========================================================================================
 
-int isInTree (struct Node* node, int* item) {
-    return findItem(node, item) != NULL;
+int isInTree (struct Map map, int* item) {
+    return findItem(map, item) != NULL;
 }
 
 
-struct Node* findItem (struct Node* node, int* item) {
+struct Node* findItem (struct Map map, int* item) {
 
-    if (item == NULL || node == NULL)
+    if (item == NULL || map.treeRoot == NULL)
         return NULL;
 
-    struct Node* tree = findTop(node);
+    struct Node* tree = map.treeRoot;
 
-    struct Node* parent = findParent(tree, getHash(item));
+    unsigned hash = getHash(item);
 
-    if (parent == NULL) {
-        if (tree->data == item)
-            return tree;
-        else
-            return NULL;
+    struct Node* tmp = tree;
+
+    while (tmp) {
+        if (tmp->key > hash)
+            tmp = tmp->left;
+        else {
+            if (tmp->data == item)
+                return tmp;
+            tmp = tmp->right;
+        }
     }
-
-    if (parent->right && parent->right->data == item)
-        return parent->right;
-
-    if (parent->left && parent->left->data == item)
-        return parent->left;
 
     return NULL;
 }
@@ -59,7 +97,16 @@ struct Node* findTop (struct Node* node) {
     return res;
 }
 
-
+/*
+ * parameters:
+ *      {tree} the root
+ *      {key}  the key of item, which parent we want to find
+ *
+ * returns:
+ *      the pointer to appropriate node, if the the parent was found,
+ *      the NULL vice versa.
+ *
+ */
 struct Node* findParent (struct Node* tree, unsigned key) {
 
     if (tree == NULL)
@@ -70,13 +117,12 @@ struct Node* findParent (struct Node* tree, unsigned key) {
             return findParent(tree->left, key);
         else
             return tree;
-    } else if (tree->key < key){
+    } else {
         if (tree->right)
             return findParent(tree->right, key);
         else
             return tree;
-    } else
-        return tree->parent;
+    }
 }
 
 struct Node* findGrandparent(struct Node *node) {
@@ -144,7 +190,7 @@ void leftRotation (struct Node* node) {
 
     struct Node* pivot = node->right;
 
-    pivot->parent = node->parent; /* при этом, возможно, pivot становится корнем дерева */
+    pivot->parent = node->parent; // and pivot can become the root of tree
     if (node->parent != NULL) {
         if (node->parent->left == node)
             node->parent->left = pivot;
@@ -164,7 +210,7 @@ void rightRotation(struct Node *node) {
 
     struct Node* pivot = node->left;
 
-    pivot->parent = node->parent; /* при этом, возможно, pivot становится корнем дерева */
+    pivot->parent = node->parent; // and pivot can become the root of tree
     if (node->parent != NULL) {
         if (node->parent->left == node)
             node->parent->left = pivot;
@@ -193,20 +239,36 @@ void rightRotation(struct Node *node) {
  * the top of the tree can change, so it returns the top
  * of the updated tree
  */
-struct Node* addItem (struct Node* tree, int* item) {
+void addItem (struct Map* map, int* item, int* error) {
 
-    tree = findTop(tree);
+    /////////////
+    int flag = 0;
+    if (item && *item == 9) {
+        flag = -1;
+    }
+    ///////////////
+
+    struct Node* tree = map->treeRoot;
 
     if (item == NULL)
-        return tree;
+        return;
 
-    if (isInTree(tree, item)) {
-        return tree;
+    if (isInTree(*map, item)) {
+        return;
     }
 
     struct Node* node = (struct Node*) calloc (1, sizeof(struct Node));
+
+    /////////////////////
+    if (flag == -1) {
+        free(node);
+        node = NULL;
+    }
+//////////////////////
+
     if (node == NULL) {
-        return NULL;
+        *error = LACK_OF_MEMORY;
+        return;
     }
 
     node->data = item;
@@ -220,7 +282,7 @@ struct Node* addItem (struct Node* tree, int* item) {
 
     insert (parent, node);
 
-    return findTop (node);
+    map->treeRoot = findTop(node);
 }
 
 void insert (struct Node* parent, struct Node* node) {
@@ -329,25 +391,35 @@ void insert_case5(struct Node* node) {
 //                              Deleting element
 //==========================================================================================
 
-struct Node* deleteItem (struct Node* tree, int *item) {
+void deleteItem (struct Map* map, int* item, int* error) {
 
-    tree = findTop(tree);
+    ////////////////////
+    int flag = 0;
+    if (item && *item == 16) {
+        flag = -1;
+    }
+////////////////////////
+
+    struct Node* tree = map->treeRoot;
 
     if (item == NULL || tree == NULL)
-        return tree;
+        return;
 
-    struct Node* node = findItem(tree, item);
+    struct Node* node = findItem(*map, item);
 
-    if (node)
-        return deleteNode (node);
+    if (node) {
+        ////////////
+        if (flag == -1) {
+            map->treeRoot = deleteNode(node, &flag);
+        }
+        /////////////
+        map->treeRoot = deleteNode(node, error);
+    }
     else
-        return NULL;
+        return;
 }
 
-struct Node* deleteNode (struct Node* node) {
-
-    if (node == NULL)
-        return NULL;
+struct Node* deleteNode (struct Node* node, int* error) {
 
     struct Node* M, *leaf = NULL;
     struct Node* tmp = node;
@@ -359,9 +431,6 @@ struct Node* deleteNode (struct Node* node) {
     else {
         tmp = node->parent;
         M = node;
-        //TODO:
-        printf ("I got in TODO if!\n");
-        //return NULL; // not final version, need to be done!
     }
 
     if (M->left == NULL && M->right == NULL) {
@@ -370,8 +439,17 @@ struct Node* deleteNode (struct Node* node) {
 
         M->right = leaf;
 
-        if (M->right == NULL)
-            return node; //return the error code
+///////////////////////
+        if (error && *error == -1) {
+            free(leaf);
+            M->right = NULL;
+        }
+///////////////////////////
+
+        if (M->right == NULL) {
+            *error = LACK_OF_MEMORY;
+            return findTop(node); //return the error code
+        }
 
         M->right->right = NULL;
         M->right->left  = NULL;
@@ -381,11 +459,23 @@ struct Node* deleteNode (struct Node* node) {
         M->right->color = BLACK;
     }
 
+    int* prev_data = node->data;
+    unsigned prev_key = node->key;
+
     node->data = M->data;
     node->key  = M->key;
 
-    deleteTheOnlyChild(M);
-    //TODO:
+    int ch = deleteTheOnlyChild(M);
+    /*if (ch) {
+        if (error)
+            *error = ch;
+
+        node->data = prev_data;
+        node->key = prev_key;
+
+        return findTop(node);
+    }*/
+
     if (leaf) {
 
         if (leaf->parent) {
@@ -406,6 +496,11 @@ int deleteTheOnlyChild(struct Node* node) {
     /*
      * Условие: n имеет не более одного ненулевого потомка.
      */
+/////////////////////
+    if (node && *(node->data) == 6) {
+        return NOT_THE_ONLY_CHILD;
+    }
+    ///////////////////////////
 
     if (node->left && node->right)
         return NOT_THE_ONLY_CHILD;
@@ -553,6 +648,10 @@ void delete_case6 (struct Node* node) {
     }
 }
 
+void deleteMap (struct Map map) {
+    deleteTree(map.treeRoot);
+}
+
 void deleteTree (struct Node* tree) {
 
     if (tree == NULL)
@@ -569,13 +668,17 @@ void deleteTree (struct Node* tree) {
 //                              Foreach functions
 //==========================================================================================
 
-int foreach (struct Node* tree, int (*foo)(struct Node el, void* data), void* data) {
+int foreach (struct Map map, int (*foo)(struct Node el, void* data), void* data) {
+    return foreach_h(map.treeRoot, foo, data);
+}
+
+int foreach_h (struct Node* tree, int (*foo)(struct Node el, void* data), void* data) {
 
     if (tree == NULL)
         return 1;
 
-    foreach(tree->left, foo, data);
-    foreach(tree->right, foo, data);
+    foreach_h(tree->left, foo, data);
+    foreach_h(tree->right, foo, data);
     return foo (*tree, data);
 }
 
@@ -593,14 +696,20 @@ static void writeIndents (int indents) {
 static void printNode (struct Node* node, int indents) {
     writeIndents(indents);
     if (node == NULL)
-        printf ("NULL\n");
-    else
-        printf ("%d\n", *node->data);
+        printf ("NULL(B)\n");
+    else {
+        printf("%d", *(node->data));
+
+        if (node->color == RED)
+            printf("(R)\n");
+        else
+            printf("(B)\n");
+    }
 }
 
 
-void printTree (struct Node* tree) {
-    printTreeWithIndents(tree, 0);
+void printMap (struct Map map) {
+    printTreeWithIndents(map.treeRoot, 0);
 }
 
 void printTreeWithIndents (struct Node* tree, int indents) {

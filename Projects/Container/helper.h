@@ -11,7 +11,7 @@ struct Node* findUncle(struct Node *node);
 struct Node* findBrother (struct Node* node);
 
 
-int isInTree (struct Node* node, int* item);
+int isInTree (struct Map node, int* item);
 void leftRotation(struct Node *node);
 void rightRotation(struct Node *node);
 
@@ -19,7 +19,7 @@ void rightRotation(struct Node *node);
 void replaceWithChild (struct Node* node, struct Node* child);
 
 
-struct Node* deleteNode (struct Node* node);
+struct Node* deleteNode (struct Node* node, int* error);
 int deleteTheOnlyChild(struct Node* node);
 void delete_case1 (struct Node* node);
 void delete_case2 (struct Node* node);
@@ -37,4 +37,6 @@ void insert_case4(struct Node* node);
 void insert_case5(struct Node* node);
 
 
+int foreach_h (struct Node* tree, int (*foo)(struct Node el, void* data), void* data);
+void deleteTree (struct Node* tree);
 void printTreeWithIndents (struct Node* tree, int indents);
