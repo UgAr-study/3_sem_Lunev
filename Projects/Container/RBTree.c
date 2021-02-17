@@ -18,7 +18,7 @@
  */
 struct Map* createMap (struct Array* data) {
 
-    struct Map* map = (struct Map*) calloc (1, sizeof(struct Map));
+    struct Map* map = (struct Map*) CALLOC(1, sizeof(struct Map));
 
     if (map == NULL)
         return NULL;
@@ -86,13 +86,6 @@ struct Node* findItem (struct Map* map, int* item) {
  */
 void addItem (struct Map* map, int* item) {
 
-    /*/////////////
-    int flag = 0;
-    if (item && *item == 9) {
-        flag = -1;
-    }
-    ///////////////*/
-
     if (map == NULL || item == NULL)
         return;
 
@@ -102,14 +95,7 @@ void addItem (struct Map* map, int* item) {
         return;
     }
 
-    struct Node* node = (struct Node*) calloc (1, sizeof(struct Node));
-
-    /*/////////////////////
-    if (flag == -1) {
-        free(node);
-        node = NULL;
-    }
-//////////////////////*/
+    struct Node* node = (struct Node*) CALLOC(1, sizeof(struct Node));
 
     if (node == NULL) {
         map->error = LACK_OF_MEMORY;
@@ -144,13 +130,6 @@ void addItem (struct Map* map, int* item) {
 
 void deleteItem (struct Map* map, int* item) {
 
-    /*////////////////////
-    int flag = 0;
-    if (item && *item == 16) {
-        flag = -1;
-    }
-////////////////////////*/
-
     if (item == NULL || map == NULL)
         return;
 
@@ -162,12 +141,6 @@ void deleteItem (struct Map* map, int* item) {
     struct Node* node = findItem(map, item);
 
     if (node) {
-        /*////////////
-        if (flag == -1) {
-            map->treeRoot = deleteNode(node, &flag);
-        }
-        /////////////*/
-
         int error = SUCCESS;
         map->treeRoot = deleteNode(node, &error);
         map->error = error;
@@ -243,4 +216,12 @@ int isEmpty (struct Map* map) {
         return 1;
 
     return map->treeRoot == NULL;
+}
+
+void clearError (struct Map* map) {
+
+    if (map == NULL)
+        return;
+
+    map->error = SUCCESS;
 }

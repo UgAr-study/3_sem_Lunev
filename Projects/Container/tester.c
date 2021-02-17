@@ -20,6 +20,30 @@ struct Array testInput () {
     return res;
 }
 
+void test_all () {
+    test_calloc();
+    test_1();
+    test_2();
+    test_3();
+    test_4();
+    test_5();
+    test_6();
+    test_7();
+    test_8();
+    test_9();
+    test_10();
+    test_11();
+    test_12();
+    test_13();
+    test_14();
+    test_15();
+    test_16();
+    test_17();
+    test_18();
+    test_19();
+}
+
+
 int sumAll (struct Node* el, void *data) {
     *((int*)data) += *getData(el);
     return 0;
@@ -43,6 +67,7 @@ void test_2 () {
     struct Map* map = createMap(&data);
     printMap(map);
     deleteMap(map);
+    free(data.arr);
 }
 
 void test_3() {
@@ -97,18 +122,23 @@ void test_6 () {
     int a = 0;
     printMap(NULL);
     printError(NULL);
+    clearError(NULL);
     getData(NULL);
     isEmpty(NULL);
     foreach(NULL, sumAll, NULL);
     foreach(NULL, NULL, NULL);
     deleteMap(NULL);
     deleteItem(NULL, NULL);
-    deleteItem(createMap(NULL), &a);
+    struct Map* map = createMap(NULL);
+    deleteItem(map, &a);
+    deleteMap(map);
 }
 
 void test_7 () {
 
     int arr[6] = {4, 3, 7, 5, 10, 12};
+
+    int a = 20;
 
     struct Array data;
     data.size = 6;
@@ -116,6 +146,7 @@ void test_7 () {
 
     struct Map* map = createMap(&data);
     deleteItem(map, &arr[0]);
+    deleteItem(map, &a);
     printMap(map);
     deleteMap(map);
 }
@@ -272,6 +303,7 @@ void test_18 () {
 }
 
 void test_19 () {
+
     int arr[4] = {5, 2, 8, 1};
 
     struct Array data;
@@ -281,5 +313,30 @@ void test_19 () {
     struct Map* map = createMap(&data);
     deleteItem(map, &arr[3]);
     deleteItem(map, &arr[0]);
+    deleteMap(map);
+}
+
+void test_calloc () {
+
+    int arr[2] = {5, 2};
+
+    struct Array data;
+    data.size = 1;
+    data.arr = arr;
+
+    struct Map* map = createMap(NULL);
+    printf ("\nmap is %p\n", map);
+
+    map = createMap(&data);
+    printf ("\nmap is %p\n", map);
+    printError(map);
+    clearError(map);
+
+    data.size = 2;
+    map = createMap(&data);
+
+    deleteItem(map, &arr[1]);
+    printError(map);
+    clearError(map);
     deleteMap(map);
 }

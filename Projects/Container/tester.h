@@ -9,6 +9,7 @@
 #include "RBTree.h"
 
 struct Array testInput ();
+void test_all();
 
 void test_1();
 void test_2();
@@ -31,3 +32,4 @@ void test_18();
 void test_19();
 void test_20();
 void test_21();
+void test_calloc();

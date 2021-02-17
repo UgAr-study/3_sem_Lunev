@@ -1,9 +1,31 @@
 //
 // Created by artem on 16.02.2021.
 //
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+
+
+#ifdef TEST
+#define CALLOC(x, y) calloc_h(x, y)
+#else
+#define CALLOC(x, y) calloc(x, y)
+#endif
+
+void* calloc_h(size_t nnum, size_t size) {
+    static int a = 0;
+
+    if (a == 0 || a == 2 || a == 6) {
+        a++;
+        return NULL;
+    }
+
+    a++;
+    return calloc (nnum,size);
+}
+
+
 
 enum error_t {SUCCESS = 0, LACK_OF_MEMORY};
 enum color_t {BLACK, RED};
@@ -125,19 +147,19 @@ struct Node* findParent (struct Node* tree, unsigned key) {
 
 struct Node* findGrandparent(struct Node *node) {
 
-    if ((node != NULL) && (node->parent != NULL))
+    //if ((node != NULL) && (node->parent != NULL))
         return node->parent->parent;
-    else
-        return NULL;
+    //else
+    //    return NULL;
 }
 
 struct Node* findUncle (struct Node* node) {
 
     struct Node* grandpa = findGrandparent(node);
 
-    if (grandpa == NULL)
+    /*if (grandpa == NULL)
         return NULL;
-
+*/
     if (node->parent == grandpa->left)
         return grandpa->right;
     else
@@ -157,9 +179,9 @@ struct Node* findBrother (struct Node* node) {
 
 struct Node* findMax (struct Node* tree) {
 
-    if (tree == NULL)
+    /*if (tree == NULL)
         return NULL;
-
+*/
     if (tree->right)
         return findMax (tree->right);
     else
@@ -285,32 +307,12 @@ void insert_case4(struct Node* node) {
     struct Node* grandpa = findGrandparent(node);
 
     if ((node == node->parent->right) && (node->parent == grandpa->left)) {
+
         leftRotation(node->parent);
-
-        /*
-         * rotate_left может быть выполнен следующим образом, учитывая что уже есть *g =  grandparent(n)
-         *
-         * struct node *saved_p=g->left, *saved_left_n=n->left;
-         * g->left=n;
-         * n->left=saved_p;
-         * saved_p->right=saved_left_n;
-         *
-         */
-
         node = node->left;
     } else if ((node == node->parent->left) && (node->parent == grandpa->right)) {
+
         rightRotation(node->parent);
-
-        /*
-         * rotate_right может быть выполнен следующим образом, учитывая что уже есть *g =  grandparent(n)
-         *
-         * struct node *saved_p=g->right, *saved_right_n=n->right;
-         * g->right=n;
-         * n->right=saved_p;
-         * saved_p->left=saved_right_n;
-         *
-         */
-
         node = node->right;
     }
     insert_case5(node);
@@ -326,7 +328,7 @@ void insert_case5(struct Node* node) {
 
     if ((node == node->parent->left) && (node->parent == grandpa->left)) {
         rightRotation(grandpa);
-    } else { /* (n == n->parent->right) && (n->parent == g->right) */
+    } else {
         leftRotation(grandpa);
     }
 }
@@ -357,7 +359,7 @@ struct Node* deleteNode (struct Node* node, int* error) {
 
     if (M->left == NULL && M->right == NULL) {
 
-        leaf = (struct Node*) calloc (1, sizeof(struct Node));
+        leaf = (struct Node*) CALLOC(1, sizeof(struct Node));
 
         M->right = leaf;
 
@@ -403,9 +405,9 @@ void deleteTheOnlyChild(struct Node* node) {
 
     struct Node *child;
 
-    if (node->right == NULL)
+    /*if (node->right == NULL)
         child = node->left;
-    else
+    else*/
         child = node->right;
 
     replaceWithChild (node, child);
@@ -422,9 +424,9 @@ void deleteTheOnlyChild(struct Node* node) {
 
 void replaceWithChild (struct Node* node, struct Node* child) {
 
-    if (node == NULL)
+    /*if (node == NULL)
         return;
-
+*/
 #ifdef DEBUG
     assert (child);
 #endif
@@ -500,11 +502,8 @@ void delete_case5 (struct Node* node) {
 
     struct Node *brother = findBrother (node);
 
-    if  (brother->color == BLACK) { /* this if statement is trivial,
-due to case 2 (even though case 2 changed the sibling to a sibling's child,
-the sibling's child can't be red, since no red parent can have a red child). */
-/* the following statements just force the red to be on the left of the left of the parent,
-   or right of the right, so case six will rotate correctly. */
+    if  (brother->color == BLACK) {
+
         if ((node == node->parent->left) &&
             (brother->right == NULL || brother->right->color == BLACK) &&
             (brother->left && brother->left->color == RED)) { /* this last test is trivial too due to cases 2-4. */
