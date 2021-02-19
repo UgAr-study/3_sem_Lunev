@@ -41,6 +41,7 @@ void test_all () {
     test_17();
     test_18();
     test_19();
+    my_test();
 }
 
 
@@ -338,5 +339,18 @@ void test_calloc () {
     deleteItem(map, &arr[1]);
     printError(map);
     clearError(map);
+    deleteMap(map);
+}
+
+void my_test() {
+    int arr[2] = {5, 2};
+
+    struct Array data;
+    data.size = 2;
+    data.arr = arr;
+
+    struct Map* map = createMap(&data);
+
+    deleteItem(map, &arr[1]);
     deleteMap(map);
 }

@@ -33,3 +33,4 @@ void test_19();
 void test_20();
 void test_21();
 void test_calloc();
+void my_test();

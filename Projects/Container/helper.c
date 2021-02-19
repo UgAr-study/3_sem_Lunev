@@ -16,7 +16,7 @@
 void* calloc_h(size_t nnum, size_t size) {
     static int a = 0;
 
-    if (a == 0 || a == 2 || a == 6) {
+    if (a == 0 || a == 2) {
         a++;
         return NULL;
     }
@@ -182,7 +182,7 @@ struct Node* findMax (struct Node* tree) {
     /*if (tree == NULL)
         return NULL;
 */
-    if (tree->right)
+    if (tree->right)  //TODO: may be it is better to use "while" here
         return findMax (tree->right);
     else
         return tree;
@@ -193,7 +193,7 @@ struct Node* findMin (struct Node* tree) {
     if (tree == NULL)
         return NULL;
 
-    if (tree->left)
+    if (tree->left) //TODO: may be it is better to use "while" here
         return findMin (tree->left);
     else
         return tree;
@@ -357,7 +357,7 @@ struct Node* deleteNode (struct Node* node, int* error) {
         M = node;
     }
 
-    if (M->left == NULL && M->right == NULL) {
+    /*if (M->left == NULL && M->right == NULL) {
 
         leaf = (struct Node*) CALLOC(1, sizeof(struct Node));
 
@@ -374,14 +374,14 @@ struct Node* deleteNode (struct Node* node, int* error) {
         M->right->data   = NULL;
         M->right->key    = 0;
         M->right->color  = BLACK;
-    }
+    }*/
 
     node->data = M->data;
     node->key  = M->key;
 
     deleteTheOnlyChild(M);
 
-    if (leaf) {
+    /*if (leaf) {
 
         if (leaf->parent) {
             if (leaf == leaf->parent->left)
@@ -391,7 +391,7 @@ struct Node* deleteNode (struct Node* node, int* error) {
         }
 
         free(leaf);
-    }
+    }*/
 
     return findTop(tmp);
 }
@@ -405,9 +405,25 @@ void deleteTheOnlyChild(struct Node* node) {
 
     struct Node *child;
 
-    /*if (node->right == NULL)
+    if (node->left == NULL && node->right == NULL) {
+
+        if (node->color == BLACK)
+            delete_case1(node);
+
+        if (node->parent) {
+            if (node == node->parent->left)
+                node->parent->left = NULL;
+            else
+                node->parent->right = NULL;
+        }
+
+        free(node);
+        return;
+    }
+
+    if (node->right == NULL)
         child = node->left;
-    else*/
+    else
         child = node->right;
 
     replaceWithChild (node, child);

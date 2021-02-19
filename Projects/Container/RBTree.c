@@ -145,7 +145,7 @@ void deleteItem (struct Map* map, int* item) {
         map->treeRoot = deleteNode(node, &error);
         map->error = error;
     }
-    else
+    else // TODO: may be return the error code
         return;
 }
 
