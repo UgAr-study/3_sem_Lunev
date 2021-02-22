@@ -31,13 +31,17 @@ struct Pair{
     int value;
 };
 
-struct Map* createMap (struct Array* data);
+struct Map* createMap (struct Pair* data, size_t size);
 
 int foreach (struct Map* map, int (*foo)(struct Node* el, void* data), void* data);
-struct Node* findItem (struct Map* map, int* item);
+struct Node* findItem (struct Map* map, int key);
 int* getData (struct Node* node);
-void deleteItem (struct Map* map, int *item);
-void addItem (struct Map* map, int* item);
+void deleteItem (struct Map* map, int key);
+
+/*
+ * return 0 if item was added successfully, -1 vice versa
+ */
+int addItem (struct Map* map, struct Pair item);
 void printError (struct Map* map);
 void printMap (struct Map* map);
 void deleteMap (struct Map* map);

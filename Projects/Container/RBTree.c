@@ -16,7 +16,7 @@
  * if LACK_OF_MEMORY occurs, then it will return NULL,
  * otherwise the pointer on the created Map will be returned
  */
-struct Map* createMap (struct Array* data) {
+struct Map* createMap (struct Pair* data, size_t size) {
 
     struct Map* map = (struct Map*) CALLOC(1, sizeof(struct Map));
 
@@ -24,15 +24,13 @@ struct Map* createMap (struct Array* data) {
         return NULL;
 
     map->treeRoot = NULL;
-    map->error = SUCCESS;
 
-    if (data == NULL || data->size == 0 || data->arr == NULL)
+    if (data == NULL || size == 0)
         return map;
 
-    for (int i = 0; i < data->size; ++i) {
-        addItem(map, &data->arr[i]);
+    for (size_t i = 0; i < size; ++i) {
 
-        if (map->error) {
+        if (addItem(map, data[i]) != 0) {
             deleteMap(map);
             return NULL;
         }
@@ -51,25 +49,22 @@ struct Map* createMap (struct Array* data) {
  * otherwise NULL will be returned
  */
 
-struct Node* findItem (struct Map* map, int* item) {
+struct Node* findItem (struct Map* map, int key) {
 
-    if (item == NULL || map->treeRoot == NULL)
+    if (map->treeRoot == NULL)
         return NULL;
 
     struct Node* tree = map->treeRoot;
 
-    unsigned hash = getHash(item);
-
     struct Node* tmp = tree;
 
     while (tmp) {
-        if (tmp->key > hash)
+        if (tmp->key > key)
             tmp = tmp->left;
-        else {
-            if (tmp->data == item)
-                return tmp;
+        else if (tmp->key < key)
             tmp = tmp->right;
-        }
+        else
+            return tmp;
     }
 
     return NULL;
@@ -84,15 +79,15 @@ struct Node* findItem (struct Map* map, int* item) {
 /*
  * function inserts new item in map if it is unique;
  */
-void addItem (struct Map* map, int* item) {
+int addItem (struct Map* map, struct Pair item) {
 
-    if (map == NULL || item == NULL)
-        return;
+    if (map == NULL)
+        return -1;
 
     struct Node* tree = map->treeRoot;
 
     if (isInTree(map, item)) {
-        return;
+        return 0;
     }
 
     struct Node* node = (struct Node*) CALLOC(1, sizeof(struct Node));

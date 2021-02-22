@@ -33,13 +33,12 @@ enum color_t {BLACK, RED};
 struct Node {
     struct Node *parent, *left, *right;
     enum color_t color;
-    int* data;
-    unsigned key;
+    int value;
+    int key;
 };
 
 struct Map {
     struct Node* treeRoot;
-    enum error_t error;
 };
 
 
