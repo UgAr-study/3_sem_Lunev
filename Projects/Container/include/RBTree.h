@@ -21,10 +21,7 @@
 struct Node;
 struct Map;
 
-struct Array {
-    int* arr;
-    size_t size;
-};
+enum error_t {SUCCESS = 0, LACK_OF_MEMORY, INVALID_ARG};
 
 struct Pair{
     int key;
@@ -33,17 +30,17 @@ struct Pair{
 
 struct Map* createMap (struct Pair* data, size_t size);
 
-int foreach (struct Map* map, int (*foo)(struct Node* el, void* data), void* data);
+int foreach (struct Map* map, void (*foo)(struct Node* el, void* data), void* data);
 struct Node* findItem (struct Map* map, int key);
-int* getData (struct Node* node);
-void deleteItem (struct Map* map, int key);
+int getValue (struct Node* node, int* error);
+int setValue (struct Node* node, int value);
+int deleteItem (struct Map* map, int key);
 
 /*
- * return 0 if item was added successfully, -1 vice versa
+ * return SUCCESS if item was added successfully, LACK_OF_MEMORY if calloc returned null
  */
 int addItem (struct Map* map, struct Pair item);
-void printError (struct Map* map);
-void printMap (struct Map* map);
-void deleteMap (struct Map* map);
+int printMap (struct Map* map);
+int deleteMap (struct Map* map);
+int clearMap (struct Map* map);
 int isEmpty (struct Map* map);
-void clearError (struct Map* map);

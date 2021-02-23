@@ -6,7 +6,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "RBTree.h"
+#include "../include/RBTree.h"
+
+struct Array {
+    struct Pair *arr;
+    size_t size;
+};
 
 struct Array testInput ();
 void test_all();

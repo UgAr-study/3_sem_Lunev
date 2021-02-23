@@ -2,7 +2,7 @@
 // Created by artem on 07.02.2021.
 //
 
-#include "RBTree.h"
+#include "../include/RBTree.h"
 #include "helper.c"
 
 
@@ -30,7 +30,7 @@ struct Map* createMap (struct Pair* data, size_t size) {
 
     for (size_t i = 0; i < size; ++i) {
 
-        if (addItem(map, data[i]) != 0) {
+        if (addItem(map, data[i]) != SUCCESS) {
             deleteMap(map);
             return NULL;
         }
@@ -82,24 +82,23 @@ struct Node* findItem (struct Map* map, int key) {
 int addItem (struct Map* map, struct Pair item) {
 
     if (map == NULL)
-        return -1;
+        return INVALID_ARG;
 
     struct Node* tree = map->treeRoot;
 
-    if (isInTree(map, item)) {
-        return 0;
+    if (isInTree(map, item.key)) {
+        return SUCCESS;
     }
 
     struct Node* node = (struct Node*) CALLOC(1, sizeof(struct Node));
 
     if (node == NULL) {
-        map->error = LACK_OF_MEMORY;
-        return;
+        return LACK_OF_MEMORY;
     }
 
-    node->data = item;
+    node->value = item.value;
+    node->key = item.key;
     node->color = RED;
-    node->key = getHash(item);
     node->parent = NULL;
     node->left = NULL;
     node->right = NULL;
@@ -109,6 +108,8 @@ int addItem (struct Map* map, struct Pair item) {
     insert (parent, node);
 
     map->treeRoot = findTop(node);
+
+    return SUCCESS;
 }
 
 
@@ -121,74 +122,74 @@ int addItem (struct Map* map, struct Pair item) {
 
 /*
  * function deletes item from the map;
+ * if the map or tree root is NULL then it returns INVALID_ARG error
+ * else SUCCESS is returned
  */
 
-void deleteItem (struct Map* map, int* item) {
+int deleteItem (struct Map* map, int key) {
 
-    if (item == NULL || map == NULL)
-        return;
+    if (map == NULL)
+        return INVALID_ARG;
 
     struct Node* tree = map->treeRoot;
 
     if (tree == NULL)
-        return;
+        return INVALID_ARG;
 
-    struct Node* node = findItem(map, item);
+    struct Node* node = findItem(map, key);
 
-    if (node) {
-        int error = SUCCESS;
-        map->treeRoot = deleteNode(node, &error);
-        map->error = error;
-    }
-    else // TODO: may be return the error code
-        return;
+    if (node)
+        map->treeRoot = deleteNode(node);
+
+    return SUCCESS;
 }
 
+int clearMap (struct Map* map) {
 
-void deleteMap (struct Map* map) {
     if (map == NULL)
-        return;
+        return INVALID_ARG;
+
+    deleteTree(map->treeRoot);
+    map->treeRoot = NULL;
+    return SUCCESS;
+}
+
+int deleteMap (struct Map* map) {
+
+    if (map == NULL)
+        return INVALID_ARG;
 
     deleteTree(map->treeRoot);
     free (map);
+    return SUCCESS;
 }
 
 
 //                              Foreach functions
 //==========================================================================================
 
-int foreach (struct Map* map, int (*foo)(struct Node* el, void* data), void* data) {
+int foreach (struct Map* map, void (*foo)(struct Node* el, void* data), void* data) {
 
     if (map == NULL || foo == NULL)
-        return -1;
+        return INVALID_ARG;
 
-    return foreach_h(map->treeRoot, foo, data);
+    foreach_h(map->treeRoot, foo, data);
+    return SUCCESS;
 }
 
 
 //                              Dump functions
 //==========================================================================================
 
-void printError (struct Map* map) {
+
+int printMap (struct Map* map) {
+
     if (map == NULL)
-        return;
-
-    switch (map->error) {
-
-        case SUCCESS:
-            fprintf (stderr, "No errors\n");
-            break;
-        case LACK_OF_MEMORY:
-            fprintf (stderr, "Lack of memory\n");
-            break;
-    }
-}
-
-void printMap (struct Map* map) {
-    if (map == NULL)
-        return;
+        return INVALID_ARG;
 
     printTreeWithIndents(map->treeRoot, 0);
+
+    return SUCCESS;
 }
 
 
@@ -197,26 +198,30 @@ void printMap (struct Map* map) {
 
 
 
-int* getData (struct Node* node) {
+int getValue (struct Node* node, int* error) {
+
+    if (node == NULL) {
+        if (error)
+            *error = INVALID_ARG;
+        return 0;
+    }
+
+    return node->value;
+}
+
+int setValue (struct Node* node, int value) {
 
     if (node == NULL)
-        return NULL;
+        return INVALID_ARG;
 
-    return node->data;
+    node->value = value;
+    return SUCCESS;
 }
 
 int isEmpty (struct Map* map) {
 
     if (map == NULL)
-        return 1;
+        return INVALID_ARG;
 
     return map->treeRoot == NULL;
-}
-
-void clearError (struct Map* map) {
-
-    if (map == NULL)
-        return;
-
-    map->error = SUCCESS;
 }
