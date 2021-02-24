@@ -1,5 +1,5 @@
 #include <assert.h>
-#include "../include/RBTree.h"
+#include "RBTree.h"
 #include "tester.h"
 
 int main() {

@@ -6,7 +6,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-#include "../include/RBTree.h"
+#include "RBTree.h"
 
 struct Array {
     struct Pair *arr;

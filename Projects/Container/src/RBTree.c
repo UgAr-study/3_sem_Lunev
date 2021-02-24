@@ -2,7 +2,7 @@
 // Created by artem on 07.02.2021.
 //
 
-#include "../include/RBTree.h"
+#include "RBTree.h"
 #include "helper.c"
 
 

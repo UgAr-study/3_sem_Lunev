@@ -1,18 +1,33 @@
 CC = gcc
 CFLAGS = -c -g -Wall
 DEFINES = -DTEST
-SOURCES = Test/main.c Test/tester.c src/RBTree.c
-OBJECTS = $(SOURCES:.c=.o)
-EXECUTABLE = main.out
+INCLUDES = -I./include -I./Test
+TSRC = Test/main.c Test/tester.c
+LSRC = src/RBTree.c
+TOBJ = $(TSRC:.c=.o)
+LOBJ = $(LSRC:.c=.o)
+LIBNAME = mlib.a
+LIBPATH = ./
+EXEC = main.out
 
 
-all: $(EXECUTABLE)
+build: $(LIBNAME)
 
-$(EXECUTABLE): $(OBJECTS)
-	$(CC)  $(OBJECTS) -o $@
+$(LIBNAME): $(LOBJ)
+	ar rcs $@ $<
+
+u_test: $(EXEC)
+
+$(EXEC): u_test.o
+	$(CC) -o $@ $<
+
+u_test.o: $(TOBJ) $(LIBNAME)
+	ld -r -o $@ $^
 
 %.o: %.c
-	$(CC) $(CFLAGS) $(DEFINES) -o $@ $<
+	$(CC) $(CFLAGS) $(DEFINES) $(INCLUDES) -o $@ $<
 
 clean:
-	rm -rf $(OBJECTS) $(EXECUTABLE)
+	rm -rf $(LOBJ) $(TOBJ) $(EXEC) $(LIBNAME) u_test.o u_test
+
+.PHONY: clean
