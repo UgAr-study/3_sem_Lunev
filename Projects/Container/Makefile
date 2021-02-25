@@ -1,6 +1,5 @@
 CC = gcc
-CFLAGS = -c -g -Wall
-DEFINES = -DTEST
+CFLAGS = -c -MD -g -Wall
 INCLUDES = -I./include -I./Test
 TSRC = Test/main.c Test/tester.c
 LSRC = src/RBTree.c
@@ -10,6 +9,11 @@ LIBNAME = mlib.a
 LIBPATH = ./
 EXEC = main.out
 
+ifeq ($(TEST), true)
+	DEFINES = -DTEST
+else
+	DEFINES =
+endif
 
 build: $(LIBNAME)
 
@@ -30,4 +34,6 @@ u_test.o: $(TOBJ) $(LIBNAME)
 clean:
 	rm -rf $(LOBJ) $(TOBJ) $(EXEC) $(LIBNAME) u_test.o u_test
 
-.PHONY: clean
+-include $(TOBJ:.o=.d) $(LOBJ:.o=.d)
+
+.PHONY: clean build u_test

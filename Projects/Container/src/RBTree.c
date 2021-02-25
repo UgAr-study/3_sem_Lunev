@@ -3,7 +3,7 @@
 //
 
 #include "RBTree.h"
-#include "helper.c"
+#include "helper.c" //TODO: replace with helper.h and implement all getters and setters
 
 
 
@@ -116,7 +116,7 @@ int addItem (struct Map* map, struct Pair item) {
 
 
 
-//                              Deleting element
+//                              Deleting function
 //==========================================================================================
 
 

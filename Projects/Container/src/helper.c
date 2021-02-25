@@ -4,16 +4,8 @@
 
 #define NDEBUG
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
+#include "helper.h"
 
-
-#ifdef TEST
-#define CALLOC(x, y) calloc_h(x, y)
-#else
-#define CALLOC(x, y) calloc(x, y)
-#endif
 
 void* calloc_h(size_t nnum, size_t size) {
     static int a = 0;
@@ -41,42 +33,33 @@ struct Map {
 };
 
 
-struct Node* findItem (struct Map* map, int key);
-struct Node* findTop (struct Node* node);
-struct Node* findParent (struct Node* tree, int key);
-struct Node* findGrandparent(struct Node *node);
-struct Node* findUncle(struct Node *node);
-struct Node* findBrother (struct Node* node);
+static struct Node* findGrandparent(struct Node *node);
+static struct Node* findUncle(struct Node *node);
+static struct Node* findBrother (struct Node* node);
 
 
-int isInTree (struct Map* map, int key);
-void leftRotation(struct Node *node);
-void rightRotation(struct Node *node);
+static void leftRotation(struct Node *node);
+static void rightRotation(struct Node *node);
 
 
-void replaceWithChild (struct Node* node, struct Node* child);
+static void replaceWithChild (struct Node* node, struct Node* child);
+
+static void deleteTheOnlyChild(struct Node* node);
+static void delete_case1 (struct Node* node);
+static void delete_case2 (struct Node* node);
+static void delete_case3 (struct Node* node);
+static void delete_case4 (struct Node* node);
+static void delete_case5 (struct Node* node);
+static void delete_case6 (struct Node* node);
+
+static void insert_case1(struct Node* node);
+static void insert_case2(struct Node* node);
+static void insert_case3(struct Node* node);
+static void insert_case4(struct Node* node);
+static void insert_case5(struct Node* node);
 
 
-struct Node* deleteNode (struct Node* node);
-void deleteTheOnlyChild(struct Node* node);
-void delete_case1 (struct Node* node);
-void delete_case2 (struct Node* node);
-void delete_case3 (struct Node* node);
-void delete_case4 (struct Node* node);
-void delete_case5 (struct Node* node);
-void delete_case6 (struct Node* node);
 
-void insert (struct Node* parent, struct Node* node);
-void insert_case1(struct Node* node);
-void insert_case2(struct Node* node);
-void insert_case3(struct Node* node);
-void insert_case4(struct Node* node);
-void insert_case5(struct Node* node);
-
-
-void foreach_h (struct Node* tree, void (*foo)(struct Node* el, void* data), void* data);
-void deleteTree (struct Node* tree);
-void printTreeWithIndents (struct Node* tree, int indents);
 
 
 //                              Find functions
@@ -100,16 +83,7 @@ struct Node* findTop (struct Node* node) {
     return res;
 }
 
-/*
- * parameters:
- *      {tree} the root
- *      {key}  the key of item, which parent we want to find
- *
- * returns:
- *      the pointer to appropriate node, if the the parent was found,
- *      the NULL vice versa.
- *
- */
+
 struct Node* findParent (struct Node* tree, int key) {
 
     if (tree == NULL)
@@ -128,12 +102,12 @@ struct Node* findParent (struct Node* tree, int key) {
     }
 }
 
-struct Node* findGrandparent(struct Node *node) {
+static struct Node* findGrandparent(struct Node *node) {
 
     return node->parent->parent;
 }
 
-struct Node* findUncle (struct Node* node) {
+static struct Node* findUncle (struct Node* node) {
 
     struct Node* grandpa = findGrandparent(node);
 
@@ -143,7 +117,7 @@ struct Node* findUncle (struct Node* node) {
         return grandpa->left;
 }
 
-struct Node* findBrother (struct Node* node) {
+static struct Node* findBrother (struct Node* node) {
 
     if (node == NULL || node->parent == NULL) //TODO: if i ever call this function with NULL arguments?
         return NULL;
@@ -177,7 +151,7 @@ struct Node* findMin (struct Node* tree) {
 
 
 
-void leftRotation (struct Node* node) {
+static void leftRotation (struct Node* node) {
 
     struct Node* pivot = node->right;
 
@@ -197,7 +171,7 @@ void leftRotation (struct Node* node) {
     pivot->left = node;
 }
 
-void rightRotation(struct Node *node) {
+static void rightRotation(struct Node *node) {
 
     struct Node* pivot = node->left;
 
@@ -242,7 +216,7 @@ void insert (struct Node* parent, struct Node* node) {
     insert_case2(node);
 }
 
-void insert_case1(struct Node* node) {
+static void insert_case1(struct Node* node) {
 
     if (node->parent == NULL)
         node->color = BLACK;
@@ -250,7 +224,7 @@ void insert_case1(struct Node* node) {
         insert_case2(node);
 }
 
-void insert_case2(struct Node* node) {
+static void insert_case2(struct Node* node) {
 
     if (node->parent->color == BLACK)
         return; /* Tree is still valid */
@@ -258,7 +232,7 @@ void insert_case2(struct Node* node) {
         insert_case3(node);
 }
 
-void insert_case3(struct Node* node) {
+static void insert_case3(struct Node* node) {
 
     struct Node *uncle = findUncle(node), *grandpa;
 
@@ -276,7 +250,7 @@ void insert_case3(struct Node* node) {
     }
 }
 
-void insert_case4(struct Node* node) {
+static void insert_case4(struct Node* node) {
 
     struct Node* grandpa = findGrandparent(node);
 
@@ -294,7 +268,7 @@ void insert_case4(struct Node* node) {
 }
 
 
-void insert_case5(struct Node* node) {
+static void insert_case5(struct Node* node) {
 
     struct Node* grandpa = findGrandparent(node);
 
@@ -341,7 +315,7 @@ struct Node* deleteNode (struct Node* node) {
 }
 
 
-void deleteTheOnlyChild(struct Node* node) {
+static void deleteTheOnlyChild(struct Node* node) {
 
     assert (node->left == NULL || node->right == NULL);
 
@@ -377,7 +351,7 @@ void deleteTheOnlyChild(struct Node* node) {
 }
 
 
-void replaceWithChild (struct Node* node, struct Node* child) {
+static void replaceWithChild (struct Node* node, struct Node* child) {
 
     assert (child && node);
 
@@ -390,13 +364,13 @@ void replaceWithChild (struct Node* node, struct Node* child) {
 }
 
 
-void delete_case1 (struct Node* node)
+static void delete_case1 (struct Node* node)
 {
     if (node->parent != NULL)
         delete_case2(node);
 }
 
-void delete_case2 (struct Node* node) {
+static void delete_case2 (struct Node* node) {
 
     struct Node* brother = findBrother (node);
 
@@ -413,7 +387,7 @@ void delete_case2 (struct Node* node) {
     delete_case3 (node);
 }
 
-void delete_case3 (struct Node* node) {
+static void delete_case3 (struct Node* node) {
 
     struct Node *brother = findBrother (node);
 
@@ -428,7 +402,7 @@ void delete_case3 (struct Node* node) {
         delete_case4(node);
 }
 
-void delete_case4 (struct Node* node) {
+static void delete_case4 (struct Node* node) {
 
     struct Node *brother = findBrother (node);
 
@@ -443,7 +417,7 @@ void delete_case4 (struct Node* node) {
         delete_case5(node);
 }
 
-void delete_case5 (struct Node* node) {
+static void delete_case5 (struct Node* node) {
 
     struct Node *brother = findBrother (node);
 
@@ -470,7 +444,7 @@ void delete_case5 (struct Node* node) {
     delete_case6(node);
 }
 
-void delete_case6 (struct Node* node) {
+static void delete_case6 (struct Node* node) {
 
     struct Node* brother = findBrother (node);
 
