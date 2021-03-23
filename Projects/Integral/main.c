@@ -1,95 +1,113 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-#include <time.h>
-#include "true.c"
+#define _GNU_SOURCE
+#include <sched.h>
+#include "cpu_info.h"
+#include "calc.h"
 
 double foo (double x) {
     return x * x;
 }
 
 //void *(*start_routine) (void *);
-struct thread_info {
-    double begin;
-    double end;
-    int n_steps;
-    double (*foo) (double x);
-};
+
 
 void* start_routine (void* arg) {
 
     struct thread_info* params = arg;
-    printf ("do from [%f] to [%f]\n", params->begin, params->end);
-    double* res = (double *) calloc (1, sizeof(double));
-    *res = TrueIntegral(params->begin, params->end, params->n_steps, params->foo);
-    return res;
+    params->res = CalcIntegral(params->begin, params->end, params->n_steps, params->foo);
 }
 
 int main(int argc, char* argv[]) {
 
     if (argc == 1) {
-        perror("Not all args\n");
+        printf("This system has %d processors configured and "
+               "%d processors available. size of cache line is %ld "
+               "size of page is %ld\n",
+               get_nprocs_conf(), get_nprocs(), sysconf (_SC_LEVEL1_DCACHE_LINESIZE), sysconf (_SC_PAGESIZE));
+        printf("ncpus returned %d\n", ncpus());
+        fprintf(stderr, "Not all args\n");
         return 0;
     }
 
     const double begin = 0.0;
     const double end   = 500.0;
-    const int n_steps  = 500000000;
+    const size_t n_steps  = 500000000;
 
-    int n_threads = (int) strtol (argv[1], NULL, 10);
-    pthread_t* threads = (pthread_t*) calloc (n_threads, sizeof (pthread_t));
+    // number threads we need to create except our main thread
+    int n_threads = (int) strtol (argv[1], NULL, 10) - 1;
+    struct cpu_info cpuInfo = get_mycpu_info();
 
-    int check = 0;
-    struct thread_info* data = (struct thread_info*) malloc (n_threads * sizeof (struct thread_info));
+    if (n_threads == 0) {
+        cpu_set_t cpu_set;
+        CPU_ZERO(&cpu_set);
+        CPU_SET(cpuInfo.real_threads[0], &cpu_set);
+        sched_setaffinity(0, 1, &cpu_set);
 
-
-    const double step = (end - begin) / (double) n_threads;
-    double th_begin = begin;
-    double th_end   = begin + step;
-    const int th_n_steps = n_steps / n_threads;
-
-    for (int i = 0; i < n_threads - 1; ++i) {
-
-        data[i].begin   = th_begin;
-        data[i].end     = th_end;
-        data[i].n_steps = th_n_steps;
-        data[i].foo     = foo;
-
-        th_begin = th_end;
-        th_end += step;
+        printf("res = %f\n", CalcIntegral(begin, end, n_steps, foo));
+        return 0;
     }
 
-    data[n_threads - 1].begin   = th_begin;
-    data[n_threads - 1].end     = end;
-    data[n_threads - 1].n_steps = n_steps - (n_threads - 1) * th_n_steps;
-    data[n_threads - 1].foo     = foo;
+    const double step = (end - begin) / (n_threads + 1);
+    const double my_begin = begin;
+    const double my_end = my_begin + step;
+    const size_t my_n_steps = n_steps / (n_threads + 1);
 
-    clock_t time_begin = clock();
+    struct thread_info init = {
+            .begin = my_end,
+            .end = end,
+            .n_steps = n_steps - my_n_steps,
+            .foo = foo
+    };
+
+
+
+    pthread_t* threads = (pthread_t*) malloc (n_threads * sizeof (pthread_t));
+    pthread_attr_t* attrs = (pthread_attr_t*) malloc(sizeof(pthread_attr_t) * n_threads);
+
+    set_attrs(cpuInfo, attrs, n_threads);
+
+    struct thread_info** infosp = build_cache_aligned_thread_info(n_threads);
+    fill_info(infosp, n_threads, init);
+
+    cpu_set_t cpu_set;
+    CPU_ZERO(&cpu_set);
+    CPU_SET(cpuInfo.real_threads[0], &cpu_set);
+    sched_setaffinity(0, 1, &cpu_set);
 
     for (int i = 0; i < n_threads; ++i) {
 
-        check = pthread_create (&threads[i], NULL, start_routine, (void*) &data[i]);
+        int check = pthread_create (&threads[i], &attrs[i], start_routine, (void*) infosp[i]);
         if (check != 0) {
             perror ("pthread_create");
             exit(1);
         }
     }
 
-    void* part_res;
-    double res = 0;
+    double res = CalcIntegral(my_begin, my_end, my_n_steps, foo);
     for (int i = 0; i < n_threads; ++i) {
 
-        check = pthread_join(threads[i], &part_res);
+        int check = pthread_join(threads[i], NULL);
         if (check != 0) {
             perror("pthread_join");
             exit(1);
         }
-
-        res += *((double*)part_res);
     }
 
-    clock_t time_end = clock();
-    double time_spent = (time_end - time_begin) / CLOCKS_PER_SEC;
-    printf("res = %f\nexecuted time = %f\n", res, time_spent);
+    for (int i = 0; i < n_threads; ++i)
+        res += infosp[i]->res;
+
+    printf("res = %f\n", res);
+
+    free (cpuInfo.real_threads);
+    free (cpuInfo.hyper_threads);
+    free (infosp);
+    free (threads);
+    free (attrs);
     return 0;
 }
+
+/*
+ * cpu_info = get_cpu_info;
+ * set_attrs(cpu_info, pthread_arrt* attrs, size_t size); //size = n_threads
+ * struct thread_info** infos = get_aligned_chunks(size_t n_threads);
+ */
+

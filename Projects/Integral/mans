@@ -7,3 +7,11 @@ cgroups
 taskset
 SCHED_DEADLINE
 pthread_getschedparam
+
+
+
+
+
+n_proc = get_nproc();
+real_threads = n_proc / 2;
+hyper_threads = real_threads;
