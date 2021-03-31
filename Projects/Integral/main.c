@@ -7,9 +7,6 @@ double foo (double x) {
     return x * x;
 }
 
-//void *(*start_routine) (void *);
-
-
 void* start_routine (void* arg) {
 
     struct thread_info* params = arg;
@@ -33,23 +30,23 @@ int main(int argc, char* argv[]) {
     const size_t n_steps  = 500000000;
 
     // number threads we need to create except our main thread
-    int n_threads = (int) strtol (argv[1], NULL, 10) - 1;
+    int n_threads = (int) strtol (argv[1], NULL, 10);
     struct cpu_info cpuInfo = get_mycpu_info();
 
-    if (n_threads == 0) {
+    if (n_threads == 1) {
         cpu_set_t cpu_set;
         CPU_ZERO(&cpu_set);
-        CPU_SET(cpuInfo.real_threads[0], &cpu_set);
-        sched_setaffinity(0, 1, &cpu_set);
+        CPU_SET(cpuInfo.cpus[0].processors[0], &cpu_set);
+        pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpu_set);
 
         printf("res = %f\n", CalcIntegral(begin, end, n_steps, foo));
         return 0;
     }
 
-    const double step = (end - begin) / (n_threads + 1);
+    const double step = (end - begin) / (n_threads);
     const double my_begin = begin;
     const double my_end = my_begin + step;
-    const size_t my_n_steps = n_steps / (n_threads + 1);
+    const size_t my_n_steps = n_steps / (n_threads);
 
     struct thread_info init = {
             .begin = my_end,
@@ -58,22 +55,21 @@ int main(int argc, char* argv[]) {
             .foo = foo
     };
 
+    pthread_t* threads = (pthread_t*) malloc ((n_threads - 1) * sizeof (pthread_t));
+    pthread_attr_t* attrs = (pthread_attr_t*) malloc(sizeof(pthread_attr_t) * (n_threads - 1));
 
+    set_attrs(cpuInfo, attrs, n_threads - 1);
 
-    pthread_t* threads = (pthread_t*) malloc (n_threads * sizeof (pthread_t));
-    pthread_attr_t* attrs = (pthread_attr_t*) malloc(sizeof(pthread_attr_t) * n_threads);
+    struct thread_info** infosp = build_cache_aligned_thread_info(n_threads - 1);
 
-    set_attrs(cpuInfo, attrs, n_threads);
-
-    struct thread_info** infosp = build_cache_aligned_thread_info(n_threads);
-    fill_info(infosp, n_threads, init);
+    fill_thread_info(infosp, n_threads - 1, init);
 
     cpu_set_t cpu_set;
     CPU_ZERO(&cpu_set);
-    CPU_SET(cpuInfo.real_threads[0], &cpu_set);
-    sched_setaffinity(0, 1, &cpu_set);
+    CPU_SET(cpuInfo.cpus[0].processors[0], &cpu_set);
+    pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpu_set);
 
-    for (int i = 0; i < n_threads; ++i) {
+    for (int i = 0; i < n_threads - 1; ++i) {
 
         int check = pthread_create (&threads[i], &attrs[i], start_routine, (void*) infosp[i]);
         if (check != 0) {
@@ -83,7 +79,7 @@ int main(int argc, char* argv[]) {
     }
 
     double res = CalcIntegral(my_begin, my_end, my_n_steps, foo);
-    for (int i = 0; i < n_threads; ++i) {
+    for (int i = 0; i < n_threads - 1; ++i) {
 
         int check = pthread_join(threads[i], NULL);
         if (check != 0) {
@@ -92,13 +88,15 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    for (int i = 0; i < n_threads; ++i)
+    for (int i = 0; i < n_threads - 1; ++i)
         res += infosp[i]->res;
 
     printf("res = %f\n", res);
 
-    free (cpuInfo.real_threads);
-    free (cpuInfo.hyper_threads);
+    for (int i = 0; i < cpuInfo.n_cpu; ++i)
+        free (cpuInfo.cpus[i].processors);
+
+    free (cpuInfo.cpus);
     free (infosp);
     free (threads);
     free (attrs);
