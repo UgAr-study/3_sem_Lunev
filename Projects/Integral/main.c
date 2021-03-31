@@ -8,7 +8,7 @@ double foo (double x) {
 }
 
 static const double begin = 0.0;
-static const double end   = 1.0;
+static const double end   = 500.0;
 
 void* start_routine (void* arg) {
 
