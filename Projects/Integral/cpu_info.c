@@ -41,28 +41,6 @@ static int add_to_cpu_array (int** arr, size_t* size, int elem, size_t position)
     return 0;
 }
 
-int ncpus(void) {
-    FILE *cmd = popen("grep '^processor' /proc/cpuinfo | wc -l", "r");
-
-    if (cmd == NULL)
-        return -1;
-
-    unsigned nprocs;
-    size_t n;
-    char buff[8];
-
-    if ((n = fread(buff, 1, sizeof(buff)-1, cmd)) <= 0)
-        return -1;
-
-    buff[n] = '\0';
-    if (sscanf(buff, "%u", &nprocs) != 1)
-        return -1;
-
-    pclose(cmd);
-
-    return nprocs;
-}
-
 struct cpu_info get_mycpu_info () {
     FILE *cmd = popen("grep \"core id\" /proc/cpuinfo", "r");
     char buff[14] = {0};

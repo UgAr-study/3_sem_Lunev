@@ -18,5 +18,3 @@ struct cpu {
 };
 
 struct cpu_info get_mycpu_info ();
-
-int ncpus(void);

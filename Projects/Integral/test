@@ -1,7 +1,5 @@
 #!/bin/bash
 
-gcc -pthread -o calc main_test.c cpu_info.c calc.c
-
 for i in 1 2 3 4 5 6 7 8
 do
 	printf "\n$i\n"
