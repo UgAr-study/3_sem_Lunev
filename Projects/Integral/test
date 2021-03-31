@@ -1,18 +1,9 @@
 #!/bin/bash
 
-gcc -pthread -o calc main.c cpu_info.c calc.c
+gcc -pthread -o calc main_test.c cpu_info.c calc.c
 
-printf "\n1:\n"
-time ./calc 1 | egrep "res|real"
-
-printf "\n2:\n"
-time ./calc 2 | egrep "res|real"
-
-printf "\n3:\n"
-time ./calc 3 | egrep "res|real"
-
-printf "\n4:\n"
-time ./calc 4 | egrep "res|real"
-
-printf "\n5:\n"
-time ./calc 5 | egrep "res|real"
+for i in 1 2 3 4 5 6 7 8
+do
+	printf "\n$i\n"
+	time ./calc $i | egrep "res|real"
+done

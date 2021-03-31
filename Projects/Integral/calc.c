@@ -4,7 +4,9 @@
 
 #include "calc.h"
 
-double CalcIntegral (double begin, double end, size_t n_steps, double (*foo) (double x)) {
+const double step = 1e-7;
+
+double CalcIntegral (double begin, double end, double (*foo) (double x)) {
 
     if (end < begin) {
         double tmp = end;
@@ -15,55 +17,53 @@ double CalcIntegral (double begin, double end, size_t n_steps, double (*foo) (do
     //debug info
     printf ("do from [%f] to [%f]\n", begin, end);
 
-    const double step = (end - begin) / n_steps;
-
     double res = 0;
-    double x2 = begin + step;
-    double f1 = foo (begin);
-    double f2 = foo (x2);
+    double x = begin;
+    double f1 = foo (x);
+    double f2 = foo (x + step);
 
-    for (int i = 0; i < n_steps; ++i) {
-
+    while (x < end) {
         res += step * (f1 + f2) / 2;
+        x += step;
         f1 = f2;
-        x2 += step;
-        f2 = foo (x2);
+        f2 = foo (x);
     }
 
+    printf ("begin [%f] finished\n", begin);
     return res;
 }
 
 
-void set_attrs (struct cpu_info cpuInfo, pthread_attr_t* attrs, size_t size) {
+void set_attrs (struct cpu_info cpu_info, pthread_attr_t* attrs, size_t size) {
     //size = n_threads & size of attrs
-    //i = 1, cause the 0th cpu is under our main thread
-    int i = 0;
-    for (; i < size && i + 1 < cpuInfo.real_threads_size; ++i) {
-        cpu_set_t cpuSet;
-        CPU_ZERO(&cpuSet);
-        CPU_SET(cpuInfo.real_threads[i + 1], &cpuSet);
-        pthread_attr_setaffinity_np(&attrs[i], 1, &cpuSet);
-    }
 
-    int j = 0;
-    for (; i + j < size && j < cpuInfo.hyper_threads_size; ++j) {
-        cpu_set_t cpuSet;
-        CPU_ZERO(&cpuSet);
-        CPU_SET(cpuInfo.hyper_threads[j], &cpuSet);
-        pthread_attr_setaffinity_np(&attrs[i + j], 1, &cpuSet);
-    }
+    /*for (int i = 0; i < size; ++i) {
+        size_t num_cpu = i % (cpu_info.n_cpu - 1) + 1; // +1 because 0 cpu 0 proc is under our main thread
+        size_t num_proc = (i / (cpu_info.n_cpu - 1)) % cpu_info.cpus[num_cpu].n_proc;
+        cpu_set_t  cpu_set;
+        CPU_ZERO(&cpu_set);
+        CPU_SET(cpu_info.cpus[num_cpu].processors[num_proc], &cpu_set);
+        pthread_attr_setaffinity_np(&attrs[i], sizeof(cpu_set_t), &cpu_set);
+    }*/
 
-    i += j;
 
-    size_t n_threads = cpuInfo.hyper_threads_size + cpuInfo.real_threads_size;
-    int tmp = i;
+    /*for (int i = 0; i < size; ++i) {
+        size_t num_cpu = (i + 1) % cpu_info.n_cpu; // +1 because 0 cpu 0 proc is under our main thread
+        size_t num_proc = ((i + 1) / cpu_info.n_cpu) % cpu_info.cpus[num_cpu].n_proc;
+        cpu_set_t  cpu_set;
+        CPU_ZERO(&cpu_set);
+        CPU_SET(cpu_info.cpus[num_cpu].processors[num_proc], &cpu_set);
+        pthread_attr_setaffinity_np(&attrs[i], sizeof(cpu_set_t), &cpu_set);
+    }*/
 
-    while (i < size) {
-        cpu_set_t cpuSet;
-        CPU_ZERO(&cpuSet);
-        CPU_SET((i - tmp) % n_threads, &cpuSet);
-        pthread_attr_setaffinity_np(&attrs[i], 1, &cpuSet);
-        ++i;
+
+    for (int i = 1; i <= size; ++i) {
+        size_t num_cpu = i % cpu_info.n_cpu; // +1 because 0 cpu 0 proc is under our main thread
+        size_t num_proc = (i / cpu_info.n_cpu) % cpu_info.cpus[num_cpu].n_proc;
+        cpu_set_t  cpu_set;
+        CPU_ZERO(&cpu_set);
+        CPU_SET(cpu_info.cpus[num_cpu].processors[num_proc], &cpu_set);
+        pthread_attr_setaffinity_np(&attrs[i - 1], sizeof(cpu_set_t), &cpu_set);
     }
 }
 
@@ -87,26 +87,41 @@ struct thread_info** build_cache_aligned_thread_info (size_t n_threads) {
     return infosp;
 }
 
-void fill_info (struct thread_info** infosp, size_t size, struct thread_info init) {
+void fill_thread_info (struct thread_info** infosp, size_t info_size,
+                       struct thread_info init, size_t n_threads) {
 
-    const double interval = (init.end - init.begin) / (double) size;
+    const double interval = (init.end - init.begin) / (double) n_threads;
     double th_begin = init.begin;
     double th_end   = init.begin + interval;
-    const size_t th_n_steps = init.n_steps / size;
+    const double c_begin = init.begin;
+    const double c_end = init.begin + interval;
 
-    for (int i = 0; i < size - 1; ++i) {
+    for (int i = 0; i < n_threads - 1; ++i) {
 
         infosp[i]->begin   = th_begin;
         infosp[i]->end     = th_end;
-        infosp[i]->n_steps = th_n_steps;
-        infosp[i]->foo     = init.foo;
-
         th_begin = th_end;
         th_end += interval;
     }
 
-    infosp[size - 1]->begin   = th_begin;
-    infosp[size - 1]->end     = init.end;
-    infosp[size - 1]->n_steps = init.n_steps - (size - 1) * th_n_steps;
-    infosp[size - 1]->foo     = init.foo;
+    infosp[n_threads - 1]->begin   = th_begin;
+    infosp[n_threads - 1]->end     = init.end;
+
+    //for threads, which must work for no reason
+    for (int i = n_threads; i < info_size; ++i) {
+        infosp[i]->begin = c_begin;
+        infosp[i]->end = c_end;
+    }
 }
+/*
+ * cpu_info {
+ *      struct cpu* cpus;
+ *      size_t n_cpu;
+ * }
+ *
+ * struct cpu {
+ *      int* processors;
+ *      size_t n_proc;
+ *      size_t
+ * }
+ */

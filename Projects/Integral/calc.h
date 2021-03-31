@@ -17,12 +17,10 @@
 struct thread_info {
     double begin;
     double end;
-    size_t n_steps;
-    double (*foo) (double x);
     double res;
 };
 
-double CalcIntegral (double begin, double end, size_t n_steps, double (*foo) (double x));
+double CalcIntegral (double begin, double end, double (*foo) (double x));
 void set_attrs (struct cpu_info cpuInfo, pthread_attr_t* attrs, size_t size);
 struct thread_info** build_cache_aligned_thread_info (size_t n_threads);
-void fill_info (struct thread_info** infosp, size_t size, struct thread_info init);
+void fill_thread_info (struct thread_info** infosp, size_t info_size, struct thread_info init, size_t n_threads);
