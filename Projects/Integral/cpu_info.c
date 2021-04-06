@@ -42,7 +42,8 @@ static int add_to_cpu_array (int** arr, size_t* size, int elem, size_t position)
 }
 
 struct cpu_info get_mycpu_info () {
-    FILE *cmd = popen("grep \"core id\" /proc/cpuinfo", "r");
+
+    FILE * cmd = popen("grep \"core id\" /proc/cpuinfo", "r");
     char buff[14] = {0};
     int core_ids[256];
     int count = 0;
@@ -87,7 +88,7 @@ struct cpu_info get_mycpu_info () {
     }
 
     res.n_cpu = n_cpu;
-
+    fclose(cmd);
     return res;
 }
 

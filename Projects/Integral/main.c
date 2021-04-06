@@ -8,7 +8,7 @@ double foo (double x) {
 }
 
 static const double begin = 0.0;
-static const double end   = 500.0;
+static const double end   = 200.0;
 
 void* start_routine (void* arg) {
 
@@ -19,10 +19,6 @@ void* start_routine (void* arg) {
 int main(int argc, char* argv[]) {
 
     if (argc == 1) {
-        printf("This system has %d processors configured and "
-               "%d processors available. size of cache line is %ld "
-               "size of page is %ld\n",
-               get_nprocs_conf(), get_nprocs(), sysconf (_SC_LEVEL1_DCACHE_LINESIZE), sysconf (_SC_PAGESIZE));
         fprintf(stderr, "Not all args\n");
         return 0;
     }
@@ -34,6 +30,7 @@ int main(int argc, char* argv[]) {
     int n_cpus = get_nprocs();
     int n_thread_create = n_threads > n_cpus ? n_threads : n_cpus;
 
+    printf ("n_threads = %d\nn_thread_create = %d\n", n_threads, n_thread_create);
     struct cpu_info cpuInfo = get_mycpu_info();
 
     struct thread_info init = {
@@ -42,7 +39,7 @@ int main(int argc, char* argv[]) {
     };
 
     pthread_t* threads = (pthread_t*) malloc (n_thread_create * sizeof (pthread_t));
-    pthread_attr_t* attrs = (pthread_attr_t*) malloc(sizeof(pthread_attr_t) * n_thread_create);
+    pthread_attr_t* attrs = (pthread_attr_t*) calloc(n_thread_create, sizeof(pthread_attr_t));
     struct thread_info** infosp = build_cache_aligned_thread_info(n_thread_create);
 
     if (threads == NULL || attrs == NULL || infosp == NULL) {
@@ -50,7 +47,8 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    set_attrs(cpuInfo, attrs, n_thread_create);
+    if (n_threads <= n_thread_create)
+        set_attrs(cpuInfo, attrs, n_thread_create);
 
     fill_thread_info(infosp, n_thread_create, init, n_threads);
 
@@ -59,11 +57,21 @@ int main(int argc, char* argv[]) {
     CPU_SET(cpuInfo.cpus[0].processors[0], &cpu_set);
     pthread_setaffinity_np(pthread_self(), sizeof(cpu_set_t), &cpu_set);
 
+    int ret = -1;
     for (int i = 0; i < n_thread_create; ++i) {
 
-        int check = pthread_create (&threads[i], &attrs[i], start_routine, (void*) infosp[i]);
-        if (check != 0) {
+        if (i == 32980) {
+            printf("Nooooooooo\n");
+        }
+
+        ret = pthread_create (&threads[i], &attrs[i], start_routine, (void*) infosp[i]);
+        if (ret != 0) {
             perror ("pthread_create");
+            free (cpuInfo.cpus);
+            free(infosp[0]);
+            free (infosp);
+            free (threads);
+            free (attrs);
             exit(1);
         }
     }
@@ -71,9 +79,14 @@ int main(int argc, char* argv[]) {
     double res = 0;
     for (int i = 0; i < n_threads; ++i) {
 
-        int check = pthread_join(threads[i], NULL);
-        if (check != 0) {
+        ret = pthread_join(threads[i], NULL);
+        if (ret != 0) {
             perror("pthread_join");
+            free (cpuInfo.cpus);
+            free(infosp[0]);
+            free (infosp);
+            free (threads);
+            free (attrs);
             exit(1);
         }
         res += infosp[i]->res;
