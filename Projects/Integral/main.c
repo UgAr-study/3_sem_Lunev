@@ -47,6 +47,9 @@ int main(int argc, char* argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    for (int i = 0; i < n_thread_create; ++i)
+        pthread_attr_init(attrs + i);
+
     if (n_threads <= n_thread_create)
         set_attrs(cpuInfo, attrs, n_thread_create);
 

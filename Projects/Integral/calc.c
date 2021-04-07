@@ -37,6 +37,7 @@ double CalcIntegral (double begin, double end, double (*foo) (double x)) {
 void set_attrs (struct cpu_info cpu_info, pthread_attr_t* attrs, size_t size) {
     // we begin from 1 because 0 cpu 0 proc is under our main thread
     for (int i = 1; i <= size; ++i) {
+        //pthread_attr_init(attrs + i - 1);
         size_t num_cpu = i % cpu_info.n_cpu;
         size_t num_proc = (i / cpu_info.n_cpu) % cpu_info.cpus[num_cpu].n_proc;
         cpu_set_t  cpu_set;
