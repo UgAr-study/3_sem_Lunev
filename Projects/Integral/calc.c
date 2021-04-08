@@ -4,18 +4,19 @@
 
 #include "calc.h"
 
+
 const double step = 1e-7;
 
-double CalcIntegral (double begin, double end, double (*foo) (double x)) {
+typedef double (*func) (double);
+
+
+double CalcIntegral (double begin, double end, func foo) {
 
     if (end < begin) {
         double tmp = end;
         end = begin;
         begin = tmp;
     }
-
-    //debug info
-    //printf ("do from [%f] to [%f]\n", begin, end);
 
     double res = 0;
     double x = begin;
@@ -29,72 +30,139 @@ double CalcIntegral (double begin, double end, double (*foo) (double x)) {
         f2 = foo (x);
     }
 
-    //printf ("begin [%f] finished\n", begin);
     return res;
 }
 
+void* start_routine (void* arg) {
 
-void set_attrs (struct cpu_info cpu_info, pthread_attr_t* attrs, size_t size) {
-    // we begin from 1 because 0 cpu 0 proc is under our main thread
-    for (int i = 1; i <= size; ++i) {
-        //pthread_attr_init(attrs + i - 1);
-        size_t num_cpu = i % cpu_info.n_cpu;
-        size_t num_proc = (i / cpu_info.n_cpu) % cpu_info.cpus[num_cpu].n_proc;
-        cpu_set_t  cpu_set;
-        CPU_ZERO(&cpu_set);
-        CPU_SET(cpu_info.cpus[num_cpu].processors[num_proc], &cpu_set);
-        pthread_attr_setaffinity_np(&attrs[i - 1], sizeof(cpu_set_t), &cpu_set);
-    }
+    struct thread_info* params = arg;
+    params->res = CalcIntegral(params->begin, params->end, params->foo);
+    return NULL;
 }
 
-struct thread_info** build_cache_aligned_thread_info (size_t n_threads) {
+int Integrate (const int n_threads, const double begin, const double end, func foo, double* result) {
 
-    long cache_line_size = sysconf (_SC_LEVEL1_DCACHE_LINESIZE);
-    long page_size = sysconf (_SC_PAGESIZE);
-    size_t one_info_size = (sizeof (struct thread_info) / cache_line_size + 1) * cache_line_size;
+    //if error is occurred, then we put an appropriate value and return it
+    int error = E_SUCCESS;
 
-    char* aligned_mem = (char*) memalign(page_size, n_threads * one_info_size);
-    if (aligned_mem == NULL) {
-        return NULL;
+    if (n_threads == 0 || foo == NULL || result == NULL)
+        return E_BADARGS;
+
+    // number of cpus we have on this system
+    int n_cpus = get_nprocs();
+    int n_thread_create = n_threads > n_cpus ? n_threads : n_cpus;
+
+    struct cpu_info cpuInfo = get_mycpu_info();
+
+    if (cpuInfo.cpus == NULL) {
+        perror("get_cpu_info");
+        return E_MEMLACK;
     }
 
-    struct thread_info** infosp = (struct thread_info**) malloc(sizeof(struct thread_info*) * n_threads);
+
+    pthread_t *threads = (pthread_t *) malloc(n_thread_create * sizeof(pthread_t));
+
+    if (threads == NULL) {
+        perror("threads allocation");
+        error = E_MEMLACK;
+        goto exit_threads;
+    }
+
+    struct thread_info **infosp = build_cache_aligned_thread_info(n_thread_create);
+
     if (infosp == NULL) {
-        free (aligned_mem);
-        return NULL;
+        perror("infosp allocation");
+        error = E_MEMLACK;
+        goto exit_infosp;
     }
 
-    for (int i = 0; i < n_threads; ++i)
-        infosp[i] = (struct thread_info *) (aligned_mem + i * one_info_size);
+    struct thread_info init = {
+            .begin = begin,
+            .end = end,
+            .foo = foo
+    };
 
-    return infosp;
-}
-
-void fill_thread_info (struct thread_info** infosp, size_t info_size,
-                       struct thread_info init, size_t n_threads) {
-
-    const double interval = (init.end - init.begin) / (double) n_threads;
-
-    double th_begin = init.begin;
-    double th_end   = init.begin + interval;
-
-    const double c_begin = th_begin;
-    const double c_end = th_end;
-
-    for (int i = 0; i < n_threads - 1; ++i) {
-
-        infosp[i]->begin   = th_begin;
-        infosp[i]->end     = th_end;
-        th_begin = th_end;
-        th_end += interval;
+    if (fill_thread_info(infosp, n_thread_create, init, n_threads) != 0) {
+        error = E_BADARGS;
+        goto exit_infosp;
     }
 
-    infosp[n_threads - 1]->begin   = th_begin;
-    infosp[n_threads - 1]->end     = init.end;
+    pthread_attr_t *attrs = (pthread_attr_t *) malloc(n_thread_create * sizeof(pthread_attr_t));
 
-    //for threads, which must work for no reason
-    for (int i = n_threads; i < info_size; ++i) {
-        infosp[i]->begin = c_begin;
-        infosp[i]->end = c_end;
+    if (attrs == NULL) {
+        perror("attrs allocation");
+        error = E_MEMLACK;
+        goto exit_attrs;
     }
+
+    for (int i = 0; i < n_thread_create; ++i) {
+
+        int check = pthread_attr_init(attrs + i);
+        if (check != 0) {
+            perror("pthread_attr_init");
+            error = E_THREAD;
+            goto exit_attrs;
+        }
+    }
+
+    if (n_threads <= n_thread_create) {
+
+        if (set_attrs(cpuInfo, attrs, n_thread_create) != 0) {
+            perror("set_attrs");
+            error = E_THREAD;
+            goto exit_all;
+        }
+    }
+
+
+    int check = 0;
+    for (int i = 0; i < n_thread_create; ++i) {
+
+        check = pthread_create(&threads[i], &attrs[i], start_routine, (void *) infosp[i]);
+        if (check != 0) {
+            perror("pthread_create");
+            error = E_THREAD;
+            goto exit_all;
+        }
+    }
+
+    double res = 0;
+    for (int i = 0; i < n_threads; ++i) {
+
+        check = pthread_join(threads[i], NULL);
+        if (check != 0) {
+            perror("pthread_join");
+            error = E_THREAD;
+            goto exit_all;
+        }
+
+        res += infosp[i]->res;
+    }
+
+    *result = res;
+
+exit_all:
+
+    for (int i = 0; i < n_thread_create; ++i)
+        pthread_attr_destroy(&attrs[i]);
+
+    free(attrs);
+
+exit_attrs:
+
+    free(infosp[0]);
+    free(infosp);
+
+exit_infosp:
+
+    free(threads);
+
+exit_threads:
+
+    for (int i = 0; i < cpuInfo.n_cpu; ++i)
+        free(cpuInfo.cpus[i].processors);
+
+    free(cpuInfo.cpus);
+
+    return error;
 }

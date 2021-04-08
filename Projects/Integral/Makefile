@@ -1,7 +1,7 @@
-CC = gcc
+CC = gcc -std=c99
 CFLAGS = -c -MD -g -Wall
 THREADFLAG = -pthread
-SRC = main.c calc.c cpu_info.c
+SRC = main.c calc.c pthread_manager.c
 OBJ = $(SRC:.c=.o)
 EXEC = calc
 
