@@ -13,9 +13,11 @@
 #include <string.h>
 #include <arpa/inet.h>
 
+int run_worker ();
+
 struct sockaddr_in
 get_hello_message (int *error);
 
-int connect_to_server (struct sockaddr_in serv_addr);
+int connect_to_server (struct sockaddr_in serv_addr, int *const error);
 
 int do_computation (int socket);

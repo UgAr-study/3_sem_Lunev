@@ -2,6 +2,7 @@
 // Created by artem on 01.03.2021.
 //
 
+#include "common.h"
 #include "Integration/calc.h"
 
 
@@ -40,23 +41,23 @@ void* start_routine (void* arg) {
     return NULL;
 }
 
-int Integrate (const int n_threads, const double begin, const double end, func foo, double* result) {
+int Integrate (size_t n_threads, double begin, double end, func foo, double *const result) {
 
     //if error is occurred, then we put an appropriate value and return it
-    int error = E_SUCCESS;
+    int error = SUCCESS;
 
     if (n_threads == 0 || foo == NULL || result == NULL)
-        return E_BADARGS;
+        return E_INVAL;
 
     // number of cpus we have on this system
-    int n_cpus = get_nprocs();
-    int n_thread_create = n_threads > n_cpus ? n_threads : n_cpus;
+    size_t n_cpus = (size_t) get_nprocs();
+    size_t n_thread_create = n_threads > n_cpus ? n_threads : n_cpus;
 
     struct cpu_info cpuInfo = get_mycpu_info();
 
     if (cpuInfo.cpus == NULL) {
         perror("get_cpu_info");
-        return E_MEMLACK;
+        return E_MEM;
     }
 
 
@@ -64,7 +65,7 @@ int Integrate (const int n_threads, const double begin, const double end, func f
 
     if (threads == NULL) {
         perror("threads allocation");
-        error = E_MEMLACK;
+        error = E_MEM;
         goto exit_threads;
     }
 
@@ -72,7 +73,7 @@ int Integrate (const int n_threads, const double begin, const double end, func f
 
     if (infosp == NULL) {
         perror("infosp allocation");
-        error = E_MEMLACK;
+        error = E_MEM;
         goto exit_infosp;
     }
 
@@ -83,7 +84,7 @@ int Integrate (const int n_threads, const double begin, const double end, func f
     };
 
     if (fill_thread_info(infosp, n_thread_create, init, n_threads) != 0) {
-        error = E_BADARGS;
+        error = E_INVAL;
         goto exit_infosp;
     }
 
@@ -91,7 +92,7 @@ int Integrate (const int n_threads, const double begin, const double end, func f
 
     if (attrs == NULL) {
         perror("attrs allocation");
-        error = E_MEMLACK;
+        error = E_MEM;
         goto exit_attrs;
     }
 
@@ -131,7 +132,7 @@ int Integrate (const int n_threads, const double begin, const double end, func f
 
         check = pthread_join(threads[i], NULL);
         if (check != 0) {
-            perror("pthread_join");
+            perror("pthread_join calc:");
             error = E_THREAD;
             goto exit_all;
         }

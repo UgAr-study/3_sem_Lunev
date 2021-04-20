@@ -8,7 +8,6 @@
 #include <stdlib.h>
 #include "pthread_manager.h"
 
-enum errors {E_SUCCESS, E_BADARGS, E_MEMLACK, E_THREAD};
 
 double CalcIntegral (double begin, double end, double (*foo) (double x));
-int Integrate (const int n_threads, const double begin, const double end, double (*foo) (double), double* result);
+int Integrate (size_t n_threads, double begin, double end, double (*foo) (double), double *const result);

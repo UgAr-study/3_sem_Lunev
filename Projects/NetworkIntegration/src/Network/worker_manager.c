@@ -1,3 +1,5 @@
+
+#include "common.h"
 #include "Network/worker_manager.h"
 
 void *work_handler (void *arg) {
@@ -296,8 +298,8 @@ int get_result (struct tasks_for_workers *const tasks, double *const res) {
 
         if (check != 0) {
             //FIXME: debug
-            perror("pthread_create");
-            error = E_PTHREAD;
+            perror("pthread_create work_handler:");
+            error = E_THREAD;
             goto exit_free_all;
         }
     }
@@ -309,9 +311,18 @@ int get_result (struct tasks_for_workers *const tasks, double *const res) {
 
         check = pthread_join(threads[i], (void**) &part);
 
-        if (check || !part) {
-            perror("pthread_join");
-            error = E_PTHREAD;
+        if (check != 0 || !part) {
+
+            if (check != 0) {
+                fprintf (stderr, "check is not 0\n");
+            }
+
+            if (part == NULL) {
+                fprintf (stderr, "part is NULL\n");
+            }
+
+            perror("pthread_join work_handler");
+            error = E_THREAD;
             goto exit_free_all;
         }
 

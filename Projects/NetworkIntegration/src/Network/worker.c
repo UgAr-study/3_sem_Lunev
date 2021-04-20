@@ -1,9 +1,44 @@
 //
 // Created by artem on 20.04.2021.
 //
+#include "common.h"
 #include "Network/worker.h"
 #include "Network/worker_manager.h"
 #include "Integration/calc.h"
+
+double foo (double x) {
+    return x * x;
+}
+
+
+int run_worker () {
+
+    int error = SUCCESS;
+
+    struct sockaddr_in serv_addr = get_hello_message (&error);
+
+    if (error != SUCCESS) {
+        p_error (error);
+        return -1;
+    }
+
+    int serv_socket = connect_to_server (serv_addr, &error);
+
+    if (error != SUCCESS) {
+        p_error (error);
+        return -1;
+    }
+
+    error = do_computation (serv_socket);
+
+    if (error != SUCCESS) {
+        p_error (error);
+        return -1;
+    }
+
+    return 0;
+}
+
 
 /**
  * wait for hello messages
@@ -84,19 +119,25 @@ struct sockaddr_in get_hello_message (int *const error) {
 
 /**
  * establishing the tcp connection to main computer
- * @param serv_addr address of server
- * @return on success, file descriptor of the connection is returned,
- * otherwise, -1 is returned
+ * @param serv_addr - address of server
+ * @param error - pointer to variable, where error status will be put
+ * @return on success, valid file descriptor of the connection is returned
+ * and if {@code error} is not NULL, {@code SUCCESS} status will be set.
+ * On error, -1 is returned and if {@code error} is not NULL,
+ * an appropriate {@code error} value will be set in it.
  */
-int connect_to_server (struct sockaddr_in serv_addr) {
+int connect_to_server (struct sockaddr_in serv_addr, int *const error) {
 
     int sk;
     struct sockaddr_in server_addr = serv_addr;
 
+    int err = SUCCESS;
+
     if ((sk = socket (AF_INET, SOCK_STREAM, 0)) < 0) {
         //FIXME: debug
         perror ("socket: ");
-        return -1;
+        err = E_SOCK;
+        goto exit;
     }
 
     //FIXME: debug
@@ -106,11 +147,20 @@ int connect_to_server (struct sockaddr_in serv_addr) {
         //FIXME: debug
         perror ("connect");
         close (sk);
-        return -1;
+        err = E_CONN;
     }
+
+exit:
+
+    if (error)
+        *error = err;
+
+    if (err != SUCCESS)
+        return -1;
 
     return sk;
 
+    /*
     // FIXME: debug
     int n_threads = 0;
     size_t r = read (sk, &n_threads, sizeof n_threads);
@@ -121,7 +171,7 @@ int connect_to_server (struct sockaddr_in serv_addr) {
         fprintf (stderr, "broken connection in read\n");
         return -1;
     }
-    //FIXME: till here
+    //FIXME: till here*/
 }
 
 int do_computation (int socket) {
@@ -129,18 +179,24 @@ int do_computation (int socket) {
     if (socket < 0)
         return E_INVAL;
 
-    int error = SUCCESS;
-
     struct worker_info init_info;
 
     if (read (socket, &init_info, sizeof init_info) != sizeof init_info) {
         //FIXME: debug
         perror ("partial read from socket");
-        error = E_CONN;
-        goto exit;
+        return E_CONN;
     }
 
-exit:
-    close (socket);
-    return error;
+    double res = 0;
+    int check = Integrate (init_info.n_threads, init_info.begin, init_info.end, foo, &res);
+
+    if (check != SUCCESS) {
+        return check;
+    }
+
+    if (write (socket, &res, sizeof res) != sizeof res) {
+        return E_CONN;
+    }
+
+    return SUCCESS;
 }
