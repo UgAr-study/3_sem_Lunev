@@ -6,8 +6,9 @@ void *work_handler (void *arg) {
 
     double *res = (double*) malloc (1 * sizeof (double));
 
-    if (res == NULL)
+    if (res == NULL) {
         goto exit_without_free;
+    }
 
     struct handler_info* h_info = arg;
 
@@ -17,7 +18,7 @@ void *work_handler (void *arg) {
         goto exit_free_res;
     }
 
-    if (read (h_info->socket, res, sizeof (double)) <= 0) {
+    if (read (h_info->socket, res, sizeof (double)) != sizeof (double)) {
         //FIXME: debug
         perror ("read from socket");
         goto exit_free_res;
@@ -227,26 +228,6 @@ int get_tcp_connections (struct tasks_for_workers* tasks) {
         }
 
         tasks->task[n_connected_sockets].socket = new_sock;
-        /*
-        if (!fork ()) {
-
-            //we are in the child, so work with new_sock
-            close (serv_sock);
-
-            //FIXME: debug
-            int n_threads = 6;
-            if (write (new_sock, &n_threads, sizeof n_threads) == -1) {
-                perror ("write");
-                close (new_sock);
-                exit (EXIT_FAILURE);
-            }
-
-            close (new_sock);
-            exit (EXIT_SUCCESS);
-        } else {
-            close (new_sock);
-        }
-        */
     }
 
     close (serv_sock);
@@ -282,7 +263,7 @@ int get_result (struct tasks_for_workers *const tasks, double *const res) {
 
     int error = SUCCESS;
 
-    pthread_t *threads = (pthread_t *) malloc(tasks->size * sizeof(pthread_t));
+    pthread_t *threads = (pthread_t *) calloc(tasks->size, sizeof(pthread_t));
 
     if (!threads) {
         error = E_MEM;
@@ -309,12 +290,12 @@ int get_result (struct tasks_for_workers *const tasks, double *const res) {
 
     for (int j = 0; j < tasks->size; ++j) {
 
-        check = pthread_join(threads[i], (void**) &part);
+        check = pthread_join(threads[j], (void**) &part);
 
         if (check != 0 || !part) {
 
             if (check != 0) {
-                fprintf (stderr, "check is not 0\n");
+                fprintf (stderr, "check = %d\n", check);
             }
 
             if (part == NULL) {
