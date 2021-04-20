@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
 
             while(1) {
 
-                if ((spl_ret_val = splice(fd_from, NULL, fd_to, NULL, PAGE, SPLICE_F_MOVE)) == 0) {
+                if ((spl_ret_val = splice(fd_from, NULL, fd_to, NULL, PAGE, SPLICE_F_MOVE)) == 0) { //кс за pipe
                     close (fd_to);
                     close (fd_from);
 
@@ -226,14 +226,14 @@ int main(int argc, char *argv[]) {
 
         for (int i = child_deaths; i < N; ++i) {
 
-            if (FD_ISSET(channels[i].fd_from, &rfds)) { //??check is empty = 0
+            if (FD_ISSET(channels[i].fd_from, &rfds)) {
                 //can read from it
-                int num_read = PutInBuffer(channels, i, N);
+                int num_read = PutInBuffer(channels, i, N); //кс за pipe родитель-ребенок
 
                 if (num_read == 0) {
                     close(channels[i].fd_from);
                     channels[i].is_can_read = 0;
-                }
+                } //конец этой кс за pipe
 
                 if (num_read < 0) {
                     printf ("smth strange fro read side\n");

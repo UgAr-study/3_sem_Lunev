@@ -187,7 +187,7 @@ int fill_thread_info (struct thread_info** infosp, size_t info_size,
     infosp[n_threads - 1]->foo     = foo;
 
     //for threads, which must work not for result
-    for (int i = n_threads; i < info_size; ++i) {
+    for (size_t i = n_threads; i < info_size; ++i) {
         infosp[i]->begin = c_begin;
         infosp[i]->end = c_end;
         infosp[i]->foo = foo;

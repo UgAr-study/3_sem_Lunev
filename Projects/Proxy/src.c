@@ -84,7 +84,7 @@ int PutInBuffer (struct Channel *channels, int i, int N) {
 
 int SetParentDeath (pid_t ppid_bef_fork) {
 
-    if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0) {
+    if (prctl(PR_SET_PDEATHSIG, SIGKILL) < 0) { //кс за ячейку с номером сигнала, который пошлется родителю
         printf ("Can't do prctl\n");
         return -1;
     }

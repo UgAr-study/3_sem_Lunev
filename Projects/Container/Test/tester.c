@@ -98,7 +98,7 @@ void test_4 () {
     struct Pair arr = {2, 1};
 
     struct Map* map = createMap(&arr, 1);
-    struct Node* node = findItem(map, arr.key);
+    struct Node* node = findItem(map, arr.key, NULL);
     assert (getValue(node, NULL) == 1);
     assert (deleteMap(map) == SUCCESS);
 }
@@ -128,7 +128,11 @@ void test_6 () {
 
     assert (printMap(NULL) == INVALID_ARG);
     int err = SUCCESS;
-    getValue(NULL, &err);
+    getValue (NULL, &err);
+    assert (err == INVALID_ARG);
+
+    err = SUCCESS;
+    getKey (NULL, &err);
     assert (err == INVALID_ARG);
 
     assert (isEmpty(NULL) == INVALID_ARG);
@@ -137,6 +141,10 @@ void test_6 () {
     assert (foreach(NULL, NULL, NULL) == INVALID_ARG);
     assert (deleteMap(NULL) == INVALID_ARG);
     assert (deleteItem(NULL, 1) == INVALID_ARG);
+
+    err = SUCCESS;
+    assert (findItem(NULL, 1, &err) == NULL);
+    assert (err == INVALID_ARG);
 
     struct Map* map = createMap(NULL, 1);
     assert (map);
@@ -160,7 +168,7 @@ void test_7 () {
 
     assert (map);
     assert (deleteItem(map, arr[0].key) == SUCCESS);
-    assert (findItem(map, arr[0].key) == NULL);
+    assert (findItem(map, arr[0].key, NULL) == NULL);
 
     assert (deleteItem(map, 20) == SUCCESS);
     assert (printMap(map) == SUCCESS);
@@ -173,7 +181,7 @@ void test_8 () {
 
     assert (map);
     assert (deleteItem(map, arr_1[7].key) == SUCCESS);
-    assert (findItem(map, arr_1[7].key) == NULL);
+    assert (findItem(map, arr_1[7].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -183,7 +191,7 @@ void test_9 () {
 
     assert (map);
     assert (deleteItem(map, arr_1[3].key) == SUCCESS);
-    assert (findItem(map, arr_1[3].key) == NULL);
+    assert (findItem(map, arr_1[3].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -193,7 +201,7 @@ void test_10 () {
 
     assert (map);
     assert (deleteItem(map, arr_1[2].key) == SUCCESS);
-    assert (findItem(map, arr_1[2].key) == NULL);
+    assert (findItem(map, arr_1[2].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -203,7 +211,7 @@ void test_11 () {
 
     assert (map);
     assert (deleteItem(map, arr_1[4].key) == SUCCESS);
-    assert (findItem(map, arr_1[4].key) == NULL);
+    assert (findItem(map, arr_1[4].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -223,7 +231,7 @@ void test_12 () {
 
     assert (map);
     assert (deleteItem(map, arr[2].key) == SUCCESS);
-    assert (findItem(map, arr[2].key) == NULL);
+    assert (findItem(map, arr[2].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -243,16 +251,16 @@ void test_13 () {
     assert (map);
 
     assert (deleteItem(map, arr[7].key) == SUCCESS);
-    assert (findItem(map, arr[7].key) == NULL);
+    assert (findItem(map, arr[7].key, NULL) == NULL);
 
     assert (deleteItem(map, arr[5].key) == SUCCESS);
-    assert (findItem(map, arr[5].key) == NULL);
+    assert (findItem(map, arr[5].key, NULL) == NULL);
 
     assert (addItem(map, arr[5]) == SUCCESS);
-    assert (getValue(findItem(map, arr[5].key), NULL) == 3);
+    assert (getValue(findItem(map, arr[5].key, NULL), NULL) == 3);
 
     assert (deleteItem(map, arr[1].key) == SUCCESS);
-    assert (findItem(map, arr[1].key) == NULL);
+    assert (findItem(map, arr[1].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -262,7 +270,7 @@ void test_14 () {
 
     assert (map);
     assert (deleteItem(map, arr_1[0].key) == SUCCESS);
-    assert (findItem(map, arr_1[0].key) == NULL);
+    assert (findItem(map, arr_1[0].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -272,7 +280,7 @@ void test_15 () {
 
     assert (map);
     assert (deleteItem(map, arr_1[1].key) == SUCCESS);
-    assert (findItem(map, arr_1[1].key) == NULL);
+    assert (findItem(map, arr_1[1].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -293,7 +301,7 @@ void test_16 () {
     assert (map);
 
     assert (deleteItem(map, arr[1].key) == SUCCESS);
-    assert (findItem(map, arr[1].key) == NULL);
+    assert (findItem(map, arr[1].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -303,7 +311,7 @@ void test_17 () {
 
     assert (map);
     assert (deleteItem(map, arr_1[5].key) == SUCCESS);
-    assert (findItem(map, arr_1[5].key) == NULL);
+    assert (findItem(map, arr_1[5].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -317,7 +325,7 @@ void test_18 () {
 
     assert (map);
     assert (deleteItem(map, arr[0].key) == SUCCESS);
-    assert (findItem(map, arr[0].key) == NULL);
+    assert (findItem(map, arr[0].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -331,10 +339,10 @@ void test_19 () {
 
     struct Map* map = createMap (arr, 4);
     assert (deleteItem(map, arr[3].key) == SUCCESS);
-    assert (findItem(map, arr[3].key) == NULL);
+    assert (findItem(map, arr[3].key, NULL) == NULL);
 
     assert (deleteItem(map, arr[0].key) == SUCCESS);
-    assert (findItem(map, arr[0].key) == NULL);
+    assert (findItem(map, arr[0].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -355,7 +363,7 @@ void test_calloc () {
     assert (map);
 
     assert (deleteItem(map, arr[1].key) == SUCCESS);
-    assert (findItem(map, arr[1].key) == NULL);
+    assert (findItem(map, arr[1].key, NULL) == NULL);
     assert (deleteMap(map) == SUCCESS);
 }
 
@@ -367,13 +375,14 @@ void my_test() {
     struct Map* map = createMap(arr, 2);
     assert (map);
 
-    struct Node* n = findItem(map, arr[1].key);
+    struct Node* n = findItem(map, arr[1].key, NULL);
     assert (n);
+    assert (getKey(n, NULL) == arr[1].key);
     assert (setValue(n, 15) == SUCCESS);
-    assert (getValue(findItem(map, arr[1].key), NULL) == 15);
+    assert (getValue(findItem(map, arr[1].key, NULL), NULL) == 15);
 
     assert (deleteItem(map, arr[1].key) == SUCCESS);
-    assert (findItem(map, arr[1].key) == NULL);
+    assert (findItem(map, arr[1].key, NULL) == NULL);
     assert (clearMap(map) == SUCCESS);
     assert (isEmpty(map));
     assert (deleteMap(map) == SUCCESS);

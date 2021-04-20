@@ -2,7 +2,7 @@
 // Created by artem on 01.03.2021.
 //
 
-#include "calc.h"
+#include "Integration/calc.h"
 
 
 const double step = 1e-7;

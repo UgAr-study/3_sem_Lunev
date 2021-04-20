@@ -17,7 +17,7 @@ int main(int argc, char *argv[]) {
     key_t key = ftok ("src.c", 0);
 
     int semid = semget (key, 6, 0666 | IPC_CREAT);
-
+/// III //////////////// writers for shared memory (up to the end)
     {
         struct sembuf ops[2];
 
@@ -47,7 +47,7 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
     }
-
+//// IV /////////////writer-reader for PRINT
     semctl(semid, PRINT, SETVAL, 1);
 
     {
@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
             exit(EXIT_FAILURE);
         }
     }
-
+//// IV ////////////////end for PRINT
     {
         struct sembuf ops[3];
 
@@ -99,7 +99,8 @@ int main(int argc, char *argv[]) {
     char *shmbuf = (char*) shmat(shmid, NULL, 0);
 
     while (1) {
-
+/// V ///////////writer-reader for shm
+/// II //////////writer-reader for MEMORY
         {
             struct sembuf ops[3];
 
@@ -120,7 +121,7 @@ int main(int argc, char *argv[]) {
                 break;
             }
         }
-
+/// II //////////end for MEMORY
         struct buffer buffer;
         buffer.size = read (fdfrom, buffer.buf, PAGESIZE);
 
@@ -169,6 +170,7 @@ int main(int argc, char *argv[]) {
                 exit(EXIT_FAILURE);
             }
         }
+/// V /////////////end fro shm
     }
 
     {

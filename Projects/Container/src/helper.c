@@ -59,14 +59,68 @@ static void insert_case4(struct Node* node);
 static void insert_case5(struct Node* node);
 
 
+//                              Getters & Setters
+//==========================================================================================
 
 
+struct Node* getTreeRoot (struct Map* map) {
+    return map->treeRoot;
+}
+
+void setTreeRoot (struct Map* map, struct Node* root) {
+    map->treeRoot = root;
+}
+
+struct Map* createMap_h () {
+    struct Map* map = (struct Map*) CALLOC(1, sizeof(struct Map));
+
+    if (map == NULL)
+        return NULL;
+
+    map->treeRoot = NULL;
+    return map;
+}
+struct Node* createNode_h (int key, int value, struct Node* parent, struct Node* left, struct Node* right) {
+
+    struct Node* node = (struct Node*) CALLOC(1, sizeof(struct Node));
+
+    if (node == NULL)
+        return NULL;
+
+    node->value = value;
+    node->key = key;
+    node->color = RED;
+    node->parent = parent;
+    node->left = left;
+    node->right = right;
+
+    return node;
+}
+int getKey_h (struct Node* node) {
+    return node->key;
+}
+
+int getValue_h (struct Node* node) {
+    return node->value;
+}
+
+void setValue_h (struct Node* node, int value) {
+    node->value = value;
+}
+
+struct Node* getLeftChild (struct Node* node) {
+    return node->left;
+}
+
+struct Node* getRightChild (struct Node* node) {
+    return node->right;
+}
 
 //                              Find functions
 //==========================================================================================
 
 int isInTree (struct Map* map, int key) {
-    return findItem(map, key) != NULL;
+    return findItem(map, key, NULL) != NULL;
 }
 
 

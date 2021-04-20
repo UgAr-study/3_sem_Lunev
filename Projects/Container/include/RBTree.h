@@ -22,8 +22,9 @@ struct Map* createMap (struct Pair* data, size_t size);
 
 int foreach (struct Map* map, void (*foo)(struct Node* el, void* data), void* data);
 
-struct Node* findItem (struct Map* map, int key);
+struct Node* findItem (struct Map* map, int key, int* error);
 int getValue (struct Node* node, int* error);
+int getKey (struct Node* node, int* error);
 int setValue (struct Node* node, int value);
 int deleteItem (struct Map* map, int key);
 

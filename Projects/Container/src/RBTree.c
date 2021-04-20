@@ -3,7 +3,7 @@
 //
 
 #include "RBTree.h"
-#include "helper.c" //TODO: replace with helper.h and implement all getters and setters
+#include "helper.h"
 
 
 
@@ -18,12 +18,10 @@
  */
 struct Map* createMap (struct Pair* data, size_t size) {
 
-    struct Map* map = (struct Map*) CALLOC(1, sizeof(struct Map));
+    struct Map* map = createMap_h();
 
     if (map == NULL)
         return NULL;
-
-    map->treeRoot = NULL;
 
     if (data == NULL || size == 0)
         return map;
@@ -49,20 +47,28 @@ struct Map* createMap (struct Pair* data, size_t size) {
  * otherwise NULL will be returned
  */
 
-struct Node* findItem (struct Map* map, int key) {
+struct Node* findItem (struct Map* map, int key, int* error) {
 
-    if (map->treeRoot == NULL)
+    if (map == NULL) {
+
+        if (error)
+            *error = INVALID_ARG;
+
         return NULL;
+    }
 
-    struct Node* tree = map->treeRoot;
+    struct Node* tree = getTreeRoot(map);
+
+    if (tree == NULL)
+        return NULL;
 
     struct Node* tmp = tree;
 
     while (tmp) {
-        if (tmp->key > key)
-            tmp = tmp->left;
-        else if (tmp->key < key)
-            tmp = tmp->right;
+        if (getKey_h(tmp) > key)
+            tmp = getLeftChild(tmp);
+        else if (getKey_h(tmp) < key)
+            tmp = getRightChild(tmp);
         else
             return tmp;
     }
@@ -84,30 +90,23 @@ int addItem (struct Map* map, struct Pair item) {
     if (map == NULL)
         return INVALID_ARG;
 
-    struct Node* tree = map->treeRoot;
+    struct Node* tree = getTreeRoot(map);
 
     if (isInTree(map, item.key)) {
         return SUCCESS;
     }
 
-    struct Node* node = (struct Node*) CALLOC(1, sizeof(struct Node));
+    struct Node* node = createNode_h (item.key, item.value, NULL, NULL, NULL);
 
     if (node == NULL) {
         return LACK_OF_MEMORY;
     }
 
-    node->value = item.value;
-    node->key = item.key;
-    node->color = RED;
-    node->parent = NULL;
-    node->left = NULL;
-    node->right = NULL;
-
-    struct Node* parent = findParent (tree, node->key);
+    struct Node* parent = findParent (tree, getKey_h(node));
 
     insert (parent, node);
 
-    map->treeRoot = findTop(node);
+    setTreeRoot(map, findTop(node));
 
     return SUCCESS;
 }
@@ -131,15 +130,15 @@ int deleteItem (struct Map* map, int key) {
     if (map == NULL)
         return INVALID_ARG;
 
-    struct Node* tree = map->treeRoot;
+    struct Node* tree = getTreeRoot(map);
 
     if (tree == NULL)
         return INVALID_ARG;
 
-    struct Node* node = findItem(map, key);
+    struct Node* node = findItem(map, key, NULL);
 
     if (node)
-        map->treeRoot = deleteNode(node);
+        setTreeRoot(map, deleteNode(node));
 
     return SUCCESS;
 }
@@ -149,8 +148,8 @@ int clearMap (struct Map* map) {
     if (map == NULL)
         return INVALID_ARG;
 
-    deleteTree(map->treeRoot);
-    map->treeRoot = NULL;
+    deleteTree(getTreeRoot(map));
+    setTreeRoot(map, NULL);
     return SUCCESS;
 }
 
@@ -159,7 +158,7 @@ int deleteMap (struct Map* map) {
     if (map == NULL)
         return INVALID_ARG;
 
-    deleteTree(map->treeRoot);
+    deleteTree(getTreeRoot(map));
     free (map);
     return SUCCESS;
 }
@@ -173,7 +172,7 @@ int foreach (struct Map* map, void (*foo)(struct Node* el, void* data), void* da
     if (map == NULL || foo == NULL)
         return INVALID_ARG;
 
-    foreach_h(map->treeRoot, foo, data);
+    foreach_h(getTreeRoot(map), foo, data);
     return SUCCESS;
 }
 
@@ -187,7 +186,7 @@ int printMap (struct Map* map) {
     if (map == NULL)
         return INVALID_ARG;
 
-    printTreeWithIndents(map->treeRoot, 0);
+    printTreeWithIndents(getTreeRoot(map), 0);
 
     return SUCCESS;
 }
@@ -206,7 +205,18 @@ int getValue (struct Node* node, int* error) {
         return 0;
     }
 
-    return node->value;
+    return getValue_h (node);
+}
+
+int getKey (struct Node* node, int* error) {
+
+    if (node == NULL) {
+        if (error)
+            *error = INVALID_ARG;
+        return 0;
+    }
+
+    return getKey_h (node);
 }
 
 int setValue (struct Node* node, int value) {
@@ -214,7 +224,7 @@ int setValue (struct Node* node, int value) {
     if (node == NULL)
         return INVALID_ARG;
 
-    node->value = value;
+    setValue_h (node, value);
     return SUCCESS;
 }
 
@@ -223,5 +233,5 @@ int isEmpty (struct Map* map) {
     if (map == NULL)
         return INVALID_ARG;
 
-    return map->treeRoot == NULL;
+    return getTreeRoot(map) == NULL;
 }

@@ -2,7 +2,7 @@
 // Created by artem on 17.03.2021.
 //
 
-#include "pthread_manager.h"
+#include "Integration/pthread_manager.h"
 
 static int find_in_array (const int* arr, int size, int elem) {
     for (int i = 0; i < size; ++i) {

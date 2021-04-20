@@ -32,9 +32,9 @@ int main(int argc, char* argv[]) {
             exit(EXIT_FAILURE);
         }
 
-        if (pid == 0) { //We are in the child
+        if (pid == 0) {
 
-            if (Receive(msgid, i+1) < 0) {
+            if (Receive(msgid, i + 1) < 0) {
                 exit (EXIT_FAILURE);
             }
 

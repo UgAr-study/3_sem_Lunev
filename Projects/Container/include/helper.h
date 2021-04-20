@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include "RBTree.h"
 
 
 #ifdef TEST
@@ -16,6 +17,17 @@
 #endif
 
 void* calloc_h(size_t nnum, size_t size);
+
+struct Node* getTreeRoot (struct Map* map);
+void setTreeRoot (struct Map* map, struct Node* root);
+
+struct Map* createMap_h ();
+struct Node* createNode_h (int key, int value, struct Node* parent, struct Node* left, struct Node* right);
+int getKey_h (struct Node* node);
+int getValue_h (struct Node* node);
+struct Node* getLeftChild (struct Node* node);
+struct Node* getRightChild (struct Node* node);
+void setValue_h (struct Node* node, int value);
 
 struct Node* findTop (struct Node* node);
 struct Node* findParent (struct Node* tree, int key);
