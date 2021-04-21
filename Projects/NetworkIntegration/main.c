@@ -128,12 +128,3 @@ exit:
         close (tasks->task[i].socket);
     }
 }
-
-/*
-
-void print_errors() {
-
-    printf ("EDEADLK = %d\n", EDEADLK);
-    printf ("EINVAL = %d\n", EINVAL);
-    printf ("ESRCH = %d\n", ESRCH);
-}*/

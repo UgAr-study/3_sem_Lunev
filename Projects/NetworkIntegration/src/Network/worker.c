@@ -26,16 +26,22 @@ int run_worker () {
 
     if (error != SUCCESS) {
         p_error (error);
+        close (serv_socket);
         return -1;
     }
 
     error = do_computation (serv_socket);
 
     if (error != SUCCESS) {
+        close (serv_socket);
         p_error (error);
         return -1;
     }
 
+    //FIXME: debug
+    printf ("Worker finished computation\n");
+
+    close (serv_socket);
     return 0;
 }
 
@@ -131,11 +137,19 @@ int connect_to_server (struct sockaddr_in serv_addr, int *const error) {
     int sk;
     struct sockaddr_in server_addr = serv_addr;
 
+    int true = 1;
     int err = SUCCESS;
 
     if ((sk = socket (AF_INET, SOCK_STREAM, 0)) < 0) {
         //FIXME: debug
         perror ("socket: ");
+        err = E_SOCK;
+        goto exit;
+    }
+
+    if (setsockopt (sk, SOL_SOCKET, SO_KEEPALIVE, &true, sizeof true) != 0) {
+        //FIXME: debug
+        perror ("setsockopt for client socket:");
         err = E_SOCK;
         goto exit;
     }
@@ -148,7 +162,11 @@ int connect_to_server (struct sockaddr_in serv_addr, int *const error) {
         perror ("connect");
         close (sk);
         err = E_CONN;
+        goto exit;
     }
+
+    //FIXME: debug
+    printf ("------Successfully connected---------------\n");
 
 exit:
 
@@ -159,19 +177,6 @@ exit:
         return -1;
 
     return sk;
-
-    /*
-    // FIXME: debug
-    int n_threads = 0;
-    size_t r = read (sk, &n_threads, sizeof n_threads);
-    if (r != 0) {
-        printf ("client: number of threads is %d\n", n_threads);
-        return sk;
-    } else {
-        fprintf (stderr, "broken connection in read\n");
-        return -1;
-    }
-    //FIXME: till here*/
 }
 
 int do_computation (int socket) {
@@ -181,7 +186,7 @@ int do_computation (int socket) {
 
     struct worker_info init_info;
 
-    if (read (socket, &init_info, sizeof init_info) != sizeof init_info) {
+    if (recv (socket, &init_info, sizeof init_info, 0) != sizeof init_info) {
         //FIXME: debug
         perror ("partial read from socket");
         return E_CONN;
@@ -194,7 +199,7 @@ int do_computation (int socket) {
         return check;
     }
 
-    if (write (socket, &res, sizeof res) != sizeof res) {
+    if (send (socket, &res, sizeof res, 0) != sizeof res) {
         return E_CONN;
     }
 

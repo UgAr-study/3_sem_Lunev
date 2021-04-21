@@ -2,6 +2,11 @@
 #include "common.h"
 #include "Network/worker_manager.h"
 
+
+static int create_server_socket (int *const server_socket);
+
+
+
 void *work_handler (void *arg) {
 
     double *res = (double*) malloc (1 * sizeof (double));
@@ -12,13 +17,22 @@ void *work_handler (void *arg) {
 
     struct handler_info* h_info = arg;
 
-    if (write (h_info->socket, &h_info->w_info, sizeof h_info->w_info) != sizeof h_info->w_info) {
+    if (send (h_info->socket, &h_info->w_info, sizeof h_info->w_info, 0) != sizeof h_info->w_info) {
         //FIXME: debug
         perror ("partial write to socket");
         goto exit_free_res;
     }
 
-    if (read (h_info->socket, res, sizeof (double)) != sizeof (double)) {
+    fd_set fdset;
+    FD_ZERO(&fdset);
+    FD_SET(h_info->socket, &fdset);
+
+    if (select (h_info->socket + 1, &fdset, NULL, NULL, NULL) != 1) {
+        perror ("select for reading");
+        goto exit_free_res;
+    }
+
+    if (recv (h_info->socket, res, sizeof (double), 0) != sizeof (double)) {
         //FIXME: debug
         perror ("read from socket");
         goto exit_free_res;
@@ -181,35 +195,21 @@ int get_tcp_connections (struct tasks_for_workers* tasks) {
 
     int error = SUCCESS;
 
-    int serv_sock, new_sock;
-    struct sockaddr_in serv_addr, new_addr;
+    int serv_sock;
+    int new_sock;
+
+    struct sockaddr_in new_addr;
     socklen_t new_addr_len = sizeof new_addr;
 
-    // Creating server socket file descriptor
-    if ((serv_sock = socket (AF_INET, SOCK_STREAM, 0)) == 0) {
-        //FIXME: debug
-        perror ("In socket");
-        error = E_SOCK;
-        goto exit_without_closing;
-    }
+    error = create_server_socket (&serv_sock);
 
-    memset (&serv_addr, 0, sizeof serv_addr);
-
-    serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
-    serv_addr.sin_port = htons (TCP_PORT);
-
-
-    if (bind (serv_sock, (struct sockaddr *) &serv_addr, sizeof serv_addr) < 0) {
-        //FIXME: debug
-        perror ("In bind");
-        error = E_SOCK;
+    if (error != SUCCESS) {
         goto exit_without_closing;
     }
 
     if (listen (serv_sock, 10) < 0) {
         //FIXME: debug
-        perror ("In listen");
+        perror ("listen on server socket");
         error = E_SOCK;
         goto exit_without_closing;
     }
@@ -220,9 +220,9 @@ int get_tcp_connections (struct tasks_for_workers* tasks) {
         //FIXME: debug
         printf ("\n+++++++ Waiting for new connection ++++++++\n\n");
 
-        if ((new_sock = accept (serv_sock, (struct sockaddr *) &serv_addr, &new_addr_len)) < 0) {
+        if ((new_sock = accept (serv_sock, (struct sockaddr *) &new_addr, &new_addr_len)) < 0) {
             //FIXME: debug
-            perror ("In accept");
+            perror ("accepting new connection");
             error = E_CONN;
             goto exit_close_sockets;
         }
@@ -230,7 +230,7 @@ int get_tcp_connections (struct tasks_for_workers* tasks) {
         tasks->task[n_connected_sockets].socket = new_sock;
     }
 
-    close (serv_sock);
+
     goto exit_without_closing;
 
 exit_close_sockets:
@@ -238,10 +238,10 @@ exit_close_sockets:
     for (int j = 0; j < n_connected_sockets; ++j)
         close (tasks->task[j].socket);
 
-    close (serv_sock);
 
 exit_without_closing:
 
+    close (serv_sock);
     return error;
 }
 
@@ -328,4 +328,61 @@ exit_free_threads:
 exit_without_free:
 
     return error;
+}
+
+/**
+ * creates a server socket with all needed options
+ * for listening connection requests
+ * @param server_socket pointer to variable, where created socket wll be put
+ * @return On success {@code SUCCESS} is returned
+ * and {@code server_socket} is filled with valid socket.
+ * On error, an appropriate {@code error} value is returned.
+ */
+static int create_server_socket (int *const server_socket) {
+
+    int true = 1;
+
+    int serv_sock;
+
+    struct sockaddr_in serv_addr;
+
+    if ((serv_sock = socket (AF_INET, SOCK_STREAM, 0)) == 0) {
+        //FIXME: debug
+        perror ("creating server socket:");
+        return E_SOCK;
+    }
+
+
+    if (setsockopt (serv_sock, SOL_SOCKET, SO_REUSEADDR, &true, sizeof true) != 0) {
+        //FIXME: debug
+        perror ("setsockopt for server socket:");
+        return E_SOCK;
+    }
+
+    struct timeval timeout = {
+            .tv_sec = 10,
+            .tv_usec = 0
+    };
+
+    if (setsockopt (serv_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout) != 0) {
+        //FIXME: debug
+        perror ("setsockopt (timeout) for server socket:");
+        return E_SOCK;
+    }
+
+    memset (&serv_addr, 0, sizeof serv_addr);
+
+    serv_addr.sin_family = AF_INET;
+    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_port = htons (TCP_PORT);
+
+
+    if (bind (serv_sock, (struct sockaddr *) &serv_addr, sizeof serv_addr) < 0) {
+        //FIXME: debug
+        perror ("binding server socket");
+        return E_SOCK;
+    }
+
+    *server_socket = serv_sock;
+    return SUCCESS;
 }
