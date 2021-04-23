@@ -11,39 +11,6 @@ double foo (double x) {
 }
 
 
-int run_worker () {
-
-    int error = SUCCESS;
-
-    struct sockaddr_in serv_addr = get_hello_message (&error);
-
-    if (error != SUCCESS) {
-        p_error (error);
-        return -1;
-    }
-
-    int serv_socket = connect_to_server (serv_addr, &error);
-
-    if (error != SUCCESS) {
-        p_error (error);
-        close (serv_socket);
-        return -1;
-    }
-
-    error = do_computation (serv_socket);
-
-    if (error != SUCCESS) {
-        close (serv_socket);
-        p_error (error);
-        return -1;
-    }
-
-    //FIXME: debug
-    printf ("Worker finished computation\n");
-
-    close (serv_socket);
-    return 0;
-}
 
 
 /**

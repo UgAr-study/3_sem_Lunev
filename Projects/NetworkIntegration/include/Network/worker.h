@@ -13,7 +13,6 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-int run_worker ();
 
 struct sockaddr_in
 get_hello_message (int *error);

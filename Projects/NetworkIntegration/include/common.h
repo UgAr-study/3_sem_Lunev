@@ -13,5 +13,13 @@ enum error {
     SUCCESS = 0, E_INVAL, E_SOCK, E_CONN, E_MEM, E_THREAD
 };
 
-void p_error (enum error err);
+struct start_pack {
+    int server;
+    size_t n_threads;
+    size_t n_machines;
+};
 
+void p_error (enum error err);
+void run_server(size_t n_threads, size_t n_machines);
+void run_worker ();
+struct start_pack parse_args (int args, char *argv[]);

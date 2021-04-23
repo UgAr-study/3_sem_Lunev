@@ -14,9 +14,12 @@ $(EXEC): $(OBJ)
 %.o: %.c
 	$(CC) $(THREADFLAG) $(CFLAGS) $(INCLUDES) -o $@ $<
 
+clean_trash:
+	rm -rf $(OBJ) $(OBJ:.o=.d)
+
 clean:
 	rm -rf $(OBJ) $(EXEC) $(OBJ:.o=.d)
 
 -include $(OBJ:.o=.d)
 
-.PHONY: clean
+.PHONY: clean clean_trash
