@@ -104,19 +104,19 @@ int connect_to_server (struct sockaddr_in serv_addr, int *const error) {
     int sk;
     struct sockaddr_in server_addr = serv_addr;
 
-    int true = 1;
     int err = SUCCESS;
+    int ret;
 
-    if ((sk = socket (AF_INET, SOCK_STREAM, 0)) < 0) {
+    sk = socket (AF_INET, SOCK_STREAM, 0);
+    if (sk < 0) {
         //FIXME: debug
         perror ("socket: ");
         err = E_SOCK;
         goto exit;
     }
 
-    if (setsockopt (sk, SOL_SOCKET, SO_KEEPALIVE, &true, sizeof true) != 0) {
-        //FIXME: debug
-        perror ("setsockopt for client socket:");
+    ret = set_keepalive (sk, 2, 1, 1);
+    if (ret != 0) {
         err = E_SOCK;
         goto exit;
     }
@@ -124,7 +124,8 @@ int connect_to_server (struct sockaddr_in serv_addr, int *const error) {
     //FIXME: debug
     printf ("------Connecting to the server---------------\n");
 
-    if (connect (sk, (struct sockaddr *) &server_addr, sizeof (server_addr)) < 0) {
+    ret = connect (sk, (struct sockaddr *) &server_addr, sizeof (server_addr));
+    if (ret < 0) {
         //FIXME: debug
         perror ("connect");
         close (sk);
@@ -151,22 +152,33 @@ int do_computation (int socket) {
     if (socket < 0)
         return E_INVAL;
 
+    ssize_t ret;
+
     struct worker_info init_info;
 
-    if (recv (socket, &init_info, sizeof init_info, 0) != sizeof init_info) {
+    ret = recv (socket, &init_info, sizeof init_info, 0);
+    if (ret != sizeof init_info) {
         //FIXME: debug
         perror ("partial read from socket");
         return E_CONN;
     }
 
     double res = 0;
-    int check = Integrate (init_info.n_threads, init_info.begin, init_info.end, foo, &res);
+    ret = Integrate (init_info.n_threads, init_info.begin, init_info.end, foo, &res);
 
-    if (check != SUCCESS) {
-        return check;
+    if (ret != SUCCESS) {
+        return ret;
     }
 
-    if (send (socket, &res, sizeof res, 0) != sizeof res) {
+    ret = send (socket, &res, sizeof res, MSG_NOSIGNAL);
+    if (ret != sizeof res) {
+        return E_CONN;
+    }
+
+    char ping = 0;
+
+    ret = send (socket, &ping, sizeof ping, MSG_NOSIGNAL);
+    if (ret != sizeof ping) {
         return E_CONN;
     }
 

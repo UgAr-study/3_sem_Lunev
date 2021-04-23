@@ -17,6 +17,6 @@
 struct sockaddr_in
 get_hello_message (int *error);
 
-int connect_to_server (struct sockaddr_in serv_addr, int *const error);
+int connect_to_server (struct sockaddr_in serv_addr, int *error);
 
 int do_computation (int socket);

@@ -23,3 +23,4 @@ void p_error (enum error err);
 void run_server(size_t n_threads, size_t n_machines);
 void run_worker ();
 struct start_pack parse_args (int args, char *argv[]);
+int set_keepalive (int socket, int keepcnt, int keepidle, int keepintvl);

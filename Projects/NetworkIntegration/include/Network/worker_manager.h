@@ -4,6 +4,8 @@
 #include <pthread.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <netinet/tcp.h>
 #include <sys/sysinfo.h>
 #include <sys/select.h>
 #include <netdb.h>
@@ -35,7 +37,7 @@ void *work_handler (void *);
 
 struct tasks_for_workers *
 divide_work (unsigned n_machines, unsigned n_threads,
-             double begin, double end, int *const error);
+             double begin, double end, int *error);
 
 void dump_tasks (struct tasks_for_workers *tasks);
 
@@ -44,4 +46,4 @@ int send_hello_message ();
 
 int get_tcp_connections (struct tasks_for_workers *tasks);
 
-int get_result (struct tasks_for_workers *tasks, double *const res);
+int get_result (struct tasks_for_workers *tasks, double *res);

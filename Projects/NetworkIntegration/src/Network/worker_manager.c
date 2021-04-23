@@ -3,19 +3,18 @@
 #include "Network/worker_manager.h"
 
 
-static int create_server_socket (int *const server_socket);
-
+static int create_server_socket (int *server_socket);
 
 
 void *work_handler (void *arg) {
 
-    double *res = (double*) malloc (1 * sizeof (double));
+    double *res = (double *) malloc (1 * sizeof (double));
 
     if (res == NULL) {
         goto exit_without_free;
     }
 
-    struct handler_info* h_info = arg;
+    struct handler_info *h_info = arg;
 
     if (send (h_info->socket, &h_info->w_info, sizeof h_info->w_info, 0) != sizeof h_info->w_info) {
         //FIXME: debug
@@ -64,14 +63,12 @@ exit_without_free:
  */
 struct tasks_for_workers *
 divide_work (unsigned n_machines, unsigned n_threads,
-             double begin, const double end, int *const error) {
+             double begin, double end, int *error) {
 
+    int err = SUCCESS;
     if (n_machines == 0 || n_threads == 0) {
-
-        if (error)
-            *error = E_INVAL;
-
-        return NULL;
+        err = E_INVAL;
+        goto exit_without_free;
     }
 
     const unsigned n_cpus = get_nprocs ();
@@ -84,14 +81,18 @@ divide_work (unsigned n_machines, unsigned n_threads,
     struct tasks_for_workers *
             res = (struct tasks_for_workers *) malloc (1 * sizeof (struct tasks_for_workers));
 
-    if (!res)
+    if (!res) {
+        err = E_MEM;
         goto exit_without_free;
+    }
 
     res->size = n_workers;
     res->task = (struct handler_info *) calloc (n_workers, sizeof (struct handler_info));
 
-    if (!res->task)
+    if (!res->task) {
+        err = E_MEM;
         goto exit_free_res;
+    }
 
     for (int i = 0; i < n_workers - 1; ++i) {
 
@@ -107,25 +108,29 @@ divide_work (unsigned n_machines, unsigned n_threads,
     res->task[n_workers - 1].w_info.begin = begin;
     res->task[n_workers - 1].w_info.end = end;
 
-    return res;
+    goto exit_without_free;
 
 exit_free_res:
 
     free (res);
+    res = NULL;
 
 exit_without_free:
 
     if (error)
-        *error = E_INVAL;
+        *error = err;
 
-    return NULL;
+    if (err != SUCCESS)
+        res = NULL;
+
+    return res;
 }
 
 /**
  * dump the result of {@code divide_work()} function
  * @param tasks - return value of {@code divide_work()} function
  */
-void dump_tasks (struct tasks_for_workers *const tasks) {
+void dump_tasks (struct tasks_for_workers *tasks) {
 
     if (tasks == NULL) {
         fprintf (stderr, "tasks is NULL\n");
@@ -187,7 +192,7 @@ int send_hello_message () {
  * On error, all file descriptors in {@code tasks} are not valid
  * and an appropriate {@code error} is returned
  */
-int get_tcp_connections (struct tasks_for_workers* tasks) {
+int get_tcp_connections (struct tasks_for_workers *tasks) {
 
     if (tasks == NULL) {
         return E_INVAL;
@@ -220,7 +225,8 @@ int get_tcp_connections (struct tasks_for_workers* tasks) {
         //FIXME: debug
         printf ("\n+++++++ Waiting for new connection ++++++++\n\n");
 
-        if ((new_sock = accept (serv_sock, (struct sockaddr *) &new_addr, &new_addr_len)) < 0) {
+        new_sock = accept (serv_sock, (struct sockaddr *) &new_addr, &new_addr_len);
+        if (new_sock < 0) {
             //FIXME: debug
             perror ("accepting new connection");
             error = E_CONN;
@@ -256,14 +262,14 @@ exit_without_closing:
  * On error, an appropriate {@code error} value is returned and
  * value of {@code res} is undefined
  */
-int get_result (struct tasks_for_workers *const tasks, double *const res) {
+int get_result (struct tasks_for_workers *tasks, double *res) {
 
     if (!tasks || !res)
         return E_INVAL;
 
     int error = SUCCESS;
 
-    pthread_t *threads = (pthread_t *) calloc(tasks->size, sizeof(pthread_t));
+    pthread_t *threads = (pthread_t *) calloc (tasks->size, sizeof (pthread_t));
 
     if (!threads) {
         error = E_MEM;
@@ -275,11 +281,11 @@ int get_result (struct tasks_for_workers *const tasks, double *const res) {
     int i = 0;
     for (; i < tasks->size; ++i) {
 
-        check = pthread_create(&threads[i], NULL, work_handler, (void *) &tasks->task[i]);
+        check = pthread_create (&threads[i], NULL, work_handler, (void *) &tasks->task[i]);
 
         if (check != 0) {
             //FIXME: debug
-            perror("pthread_create work_handler:");
+            perror ("pthread_create work_handler:");
             error = E_THREAD;
             goto exit_free_all;
         }
@@ -290,7 +296,7 @@ int get_result (struct tasks_for_workers *const tasks, double *const res) {
 
     for (int j = 0; j < tasks->size; ++j) {
 
-        check = pthread_join(threads[j], (void**) &part);
+        check = pthread_join (threads[j], (void **) &part);
 
         if (check != 0 || !part) {
 
@@ -302,7 +308,7 @@ int get_result (struct tasks_for_workers *const tasks, double *const res) {
                 fprintf (stderr, "part is NULL\n");
             }
 
-            perror("pthread_join work_handler");
+            perror ("pthread_join work_handler");
             error = E_THREAD;
             goto exit_free_all;
         }
@@ -338,22 +344,24 @@ exit_without_free:
  * and {@code server_socket} is filled with valid socket.
  * On error, an appropriate {@code error} value is returned.
  */
-static int create_server_socket (int *const server_socket) {
+static int create_server_socket (int *server_socket) {
 
     int true = 1;
-
+    int ret = 0;
     int serv_sock;
 
     struct sockaddr_in serv_addr;
 
-    if ((serv_sock = socket (AF_INET, SOCK_STREAM, 0)) == 0) {
+    serv_sock = socket (AF_INET, SOCK_STREAM, 0);
+
+    if (serv_sock == -1) {
         //FIXME: debug
         perror ("creating server socket:");
         return E_SOCK;
     }
 
-
-    if (setsockopt (serv_sock, SOL_SOCKET, SO_REUSEADDR, &true, sizeof true) != 0) {
+    ret = setsockopt (serv_sock, SOL_SOCKET, SO_REUSEADDR, &true, sizeof true);
+    if (ret != 0) {
         //FIXME: debug
         perror ("setsockopt for server socket:");
         return E_SOCK;
@@ -364,16 +372,23 @@ static int create_server_socket (int *const server_socket) {
             .tv_usec = 0
     };
 
-    if (setsockopt (serv_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout) != 0) {
+    ret = setsockopt (serv_sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout);
+    if (ret != 0) {
         //FIXME: debug
         perror ("setsockopt (timeout) for server socket:");
         return E_SOCK;
     }
 
+    ret = set_keepalive (serv_sock, 4, 3, 1);
+    if (ret != 0) {
+        return E_SOCK;
+    }
+
+
     memset (&serv_addr, 0, sizeof serv_addr);
 
     serv_addr.sin_family = AF_INET;
-    serv_addr.sin_addr.s_addr = INADDR_ANY;
+    serv_addr.sin_addr.s_addr = htonl (INADDR_ANY);
     serv_addr.sin_port = htons (TCP_PORT);
 
 

@@ -112,7 +112,8 @@ void run_server(size_t n_threads, size_t n_machines) {
         return;
     }
 
-    pthread_t th_sender, th_getter;
+    pthread_t th_sender;
+    pthread_t th_getter;
 
     if (pthread_create (&th_getter, NULL, get_tcps, tasks) != 0) {
         perror ("pthread_create getter:");
@@ -187,6 +188,39 @@ void run_worker () {
     close (serv_socket);
 }
 
+
+int set_keepalive (int socket, int keepcnt, int keepidle, int keepintvl) {
+
+    int ret;
+    int true = 1;
+
+    ret = setsockopt (socket, SOL_SOCKET, SO_KEEPALIVE, &true, sizeof true);
+    if (ret != 0) {
+        //FIXME: debug
+        perror ("setsockopt (timeout) for server socket:");
+        return -1;
+    }
+
+    ret = setsockopt(socket, IPPROTO_TCP, TCP_KEEPCNT, &keepcnt, sizeof(int));
+    if (ret != 0) {
+        perror ("tcp_keepcnt");
+        return -1;
+    }
+
+    ret = setsockopt (socket, IPPROTO_TCP, TCP_KEEPIDLE, &keepidle, sizeof(int));
+    if (ret != 0) {
+        perror ("tcp_keepcnt");
+        return -1;
+    }
+
+    ret = setsockopt(socket, IPPROTO_TCP, TCP_KEEPINTVL, &keepintvl, sizeof(int));
+    if (ret != 0) {
+        perror ("tcp_keepcnt");
+        return -1;
+    }
+
+    return 0;
+}
 
 void p_error (enum error err) {
 
