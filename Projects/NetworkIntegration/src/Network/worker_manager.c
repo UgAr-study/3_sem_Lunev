@@ -76,8 +76,8 @@ divide_work (unsigned n_machines, unsigned n_threads,
 
     unsigned tmp = n_threads / n_cpus;
     unsigned n_workers = n_threads % n_cpus == 0 ? tmp : tmp + 1;
-    n_workers = n_machines < n_workers ? n_machines : n_workers;
-
+    //n_workers = n_machines < n_workers ? n_machines : n_workers;
+    n_workers = n_machines < n_threads ? n_machines : n_threads;
     struct tasks_for_workers *
             res = (struct tasks_for_workers *) malloc (1 * sizeof (struct tasks_for_workers));
 

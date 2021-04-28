@@ -7,7 +7,7 @@
 #include "Network/worker.h"
 
 const double begin = 0.0;
-const double end = 100.0;
+const double end = 500.0;
 
 /**
  * parse user arguments to define a role and parameters
